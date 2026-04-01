@@ -1,3 +1,7 @@
+/**
+ * LibTermux-Android — Root Project Settings
+ * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
+ */
 pluginManagement {
     repositories {
         google()
@@ -16,7 +20,15 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "libtermux-android"
+
+// Core SDK
 include(":core")
+
+// UI widget
 include(":terminal-view")
-include(":sample")
+
+// Optional: Shizuku elevated execution module
 include(":shizuku")
+
+// Demo application
+include(":sample")

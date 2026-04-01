@@ -13,7 +13,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 24
         consumerProguardFiles("consumer-rules.pro")
         
         externalNativeBuild {
@@ -64,6 +64,13 @@ android {
     
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+    
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
     }
 }
 
