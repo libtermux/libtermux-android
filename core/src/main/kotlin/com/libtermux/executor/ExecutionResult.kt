@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -62,9 +62,9 @@ data class ExecutionResult(
      * Parse stdout as a typed object using kotlinx.serialization.
      *
      * Handles special cases:
-     *  - `Map<String, Any>` / `Map<String, *>`  → converted via JsonObject
-     *  - `List<Any>`                             → converted via JsonArray
-     *  - Any `@Serializable` data class          → standard decoding
+     * - `Map<String, Any>` / `Map<String, *>`  → converted via JsonObject
+     * - `List<Any>`                             → converted via JsonArray
+     * - Any `@Serializable` data class          → standard decoding
      *
      * Example:
      * ```kotlin
@@ -98,7 +98,9 @@ data class ExecutionResult(
         "ExecutionResult(exit=$exitCode, time=${executionTimeMs}ms, cmd='$command')"
 
     companion object {
-        private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        // FIXED: Added @PublishedApi and internal
+        @PublishedApi
+        internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
     }
 }
 
@@ -125,12 +127,17 @@ internal inline fun <reified T> isListType(): Boolean {
 
 // ── JsonElement → Kotlin Any converters ─────────────────────────────────────
 
+// FIXED: Added @PublishedApi to all converters accessed by inline functions
+
+@PublishedApi
 internal fun JsonObject.toAnyMap(): Map<String, Any?> =
     entries.associate { (k, v) -> k to v.toAny() }
 
+@PublishedApi
 internal fun JsonArray.toAnyList(): List<Any?> =
     map { it.toAny() }
 
+@PublishedApi
 internal fun JsonElement.toAny(): Any? = when (this) {
     is JsonNull      -> null
     is JsonPrimitive -> when {
