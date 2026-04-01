@@ -14,6 +14,7 @@ coreKtx              = "1.13.1"
 appcompat            = "1.7.0"
 material             = "1.12.0"
 lifecycle            = "2.7.0"
+shizuku              = "13.1.5"
 
 [libraries]
 androidx-core-ktx            = { group = "androidx.core",          name = "core-ktx",              version.ref = "coreKtx"     }
@@ -30,6 +31,8 @@ okhttp-logging               = { group = "com.squareup.okhttp3",   name = "loggi
 junit                        = { group = "junit",                  name = "junit",                      version.ref = "junit"       }
 mockk                        = { group = "io.mockk",               name = "mockk",                      version.ref = "mockk"       }
 robolectric                  = { group = "org.robolectric",        name = "robolectric",                version.ref = "robolectric" }
+shizuku-api                  = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
+shizuku-provider             = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 
 [plugins]
 android-application  = { id = "com.android.application",             version.ref = "agp"          }

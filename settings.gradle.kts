@@ -19,3 +19,4 @@ rootProject.name = "libtermux-android"
 include(":core")
 include(":terminal-view")
 include(":sample")
+include(":shizuku")

@@ -235,6 +235,93 @@ val content = termux.bridge.readFile("output.txt")
 
 ---
 
+## 🔐 Shizuku Integration (Elevated Privileges)
+
+libtermux-android optionally integrates with Shizuku to run commands with elevated (root/system) privileges.
+This allows your app to perform system-level operations like accessing protected files, modifying system settings, or executing privileged commands—all without requiring the user to manually install Shizuku or root their device (Shizuku can run via ADB or root).
+
+The library provides a simple API that falls back to normal execution when Shizuku is unavailable, so your app remains functional in all environments.
+
+## Installation
+
+Add the Shizuku module dependency:
+
+```kotlin
+dependencies {
+    implementation("com.github.libtermux:libtermux-android:1.0.0")
+    implementation("com.github.libtermux:shizuku:1.0.0") // optional: elevated commands
+}
+```
+
+## Usage
+
+```kotlin
+class MyActivity : AppCompatActivity() {
+    private lateinit var shizukuTermux: ShizukuTermux
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        shizukuTermux = ShizukuTermux.getInstance(this) {
+            autoInstall = true
+        }
+
+        lifecycleScope.launch {
+            shizukuTermux.initialize().collect { state ->
+                if (state is InstallState.Completed) {
+                    // Request Shizuku permission if needed
+                    if (!shizukuTermux.isShizukuPermissionGranted) {
+                        shizukuTermux.requestShizukuPermission()
+                    }
+
+                    // Run normal command
+                    val normal = shizukuTermux.bridge.run("echo Hello")
+                    println(normal.stdout)
+
+                    // Run elevated command (e.g., read system files)
+                    val elevated = shizukuTermux.runElevated("cat /system/build.prop")
+                    println("Exit code: ${elevated.exitCode}")
+                }
+            }
+        }
+    }
+}
+```
+
+## Permission
+
+Add the following permission to your AndroidManifest.xml:
+
+```xml
+<uses-permission android:name="dev.rikka.shizuku.permission.API_V23" />
+```
+
+Optionally, include the Shizuku provider for automatic service binding:
+
+```xml
+<provider
+    android:name="rikka.shizuku.ShizukuProvider"
+    android:authorities="${applicationId}.shizuku"
+    android:enabled="true"
+    android:exported="false" />
+```
+
+## API Reference
+
+**Method Description**
+
+ShizukuTermux.getInstance(context, config) Get singleton instance (also supports DSL).
+isShizukuAvailable Check if Shizuku service is installed and running.
+isShizukuPermissionGranted Check if permission has been granted.
+suspend fun requestShizukuPermission() Request permission (suspends until granted/denied).
+suspend fun runElevated(command, env, workDir) Execute command with elevated privileges. Returns ElevatedResult.
+
+## Fallback Behavior
+
+If Shizuku is not installed, not running, or permission is denied, runElevated() automatically falls back to normal execution within the Termux environment. You can check the elevated flag in the result to know how it was executed.
+
+---
+
 ## 🏗️ Project Structure
 
 ```
@@ -257,6 +344,12 @@ libtermux-android/
 │   └── src/main/kotlin/
 │       └── com/libtermux/view/
 │           └── TerminalView.kt
+│
+├── shizuku/                       # Shizuku integration for elevated commands (optional)
+│   └── src/main/kotlin/
+│       └── com/libtermux/shizuku/
+│           ├── ShizukuTermux.kt   # Entry point for elevated execution
+│           └── ElevatedResult.kt  # Result class for elevated commands
 │
 ├── sample/                        # Demo app
 │   └── src/main/kotlin/
@@ -343,7 +436,7 @@ Add to your `AndroidManifest.xml`:
 ## 📄 License
 
 ```
-Copyright 2024 LibTermux Contributors
+Copyright 2026 LibTermux Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
