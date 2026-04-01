@@ -41,12 +41,12 @@ dependencies {
     // UI Dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.material) // FIXED: Uses material directly, not androidx.material
-    implementation(libs.androidx.constraintlayout) // ADDED: Usually required for ActivityMainBinding
+    implementation(libs.material)                         // ✅ Now defined
+    implementation(libs.androidx.constraintlayout)        // ✅ Now defined
     
     // Lifecycle & Coroutines
-    implementation(libs.androidx.lifecycle.runtime.ktx) // FIXED: Added .ktx for lifecycleScope
-    implementation(libs.androidx.lifecycle.viewmodel.ktx) // ADDED: Required for viewModels() delegate
-    implementation(libs.androidx.activity.ktx) // ADDED: Required for viewModels() delegate
+    implementation(libs.androidx.lifecycle.runtime.ktx)   // ✅ Now defined
+    implementation(libs.androidx.lifecycle.viewmodel.ktx) // ✅ Now defined
+    implementation(libs.androidx.activity.ktx)            // ✅ Now defined
     implementation(libs.kotlinx.coroutines.android)
 }
