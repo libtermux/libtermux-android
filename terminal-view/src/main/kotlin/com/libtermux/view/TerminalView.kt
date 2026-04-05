@@ -30,6 +30,8 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.libtermux.executor.OutputLine
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 // Define the TermLine data class to hold text and its color
 data class TermLine(val text: String, val color: Int)
@@ -47,7 +49,8 @@ session.run("python3 -c 'for i in range(10): print(i)'")
 */
 class TerminalView @JvmOverloads constructor(
     context: Context,
-    attrs: AttributeSet? = null, = 0,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     // ── Appearance ────────────────────────────────────────────────────────
     var terminalBackgroundColor: Int = Color.parseColor("#1E1E2E")
@@ -64,7 +67,7 @@ class TerminalView @JvmOverloads constructor(
     var lineSpacing: Float   = 1.3f
 
     // ── Internal state ────────────────────────────────────────────────────
-    private val lines = mutableListOf<TermLine>() // Specify type explicitly
+    private val lines = mutableListOf<TermLine>()
     private val maxLines = 2000
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
@@ -74,7 +77,7 @@ class TerminalView @JvmOverloads constructor(
         color = cursorColor
     }
     private var charWidth  = 0f
-    private var
+    private var charHeight = 0f
     private var viewScope  = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var currentSession: com.libtermux.executor.SessionHandle? = null
     private var inputBuffer = StringBuilder()
@@ -93,10 +96,12 @@ class TerminalView @JvmOverloads constructor(
     fun attachSession(session: com.libtermux.executor.SessionHandle) {
         currentSession = session
         session.output
-            .onEach { line -> appendLine(line)In(viewScope)
+            .onEach { line -> appendLine(line) }
+            .launchIn(viewScope)
     }
 
-    /** Detach current session */    fun detach() {
+    /** Detach current session */    
+    fun detach() {
         currentSession = null
     }
 
@@ -144,8 +149,9 @@ class TerminalView @JvmOverloads constructor(
         canvas.drawText("$ $inputBuffer", paddingLeft.toFloat(), inputY, textPaint)
 
         // Draw cursor
-        paddingLeft + (inputBuffer.length + 2) * charWidth
-        canvas.drawRect(cursorX, inputY - charHeight, cursorX + charWidth, inputY, cursorPaint)    }
+        val cursorX = paddingLeft + (inputBuffer.length + 2) * charWidth
+        canvas.drawRect(cursorX, inputY - charHeight, cursorX + charWidth, inputY, cursorPaint)    
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
@@ -194,7 +200,8 @@ class TerminalView @JvmOverloads constructor(
                     if (it == "\n") {
                         performEditorAction(EditorInfo.IME_ACTION_SEND)
                     } else {
-                        inputBuffer.append(it)                        invalidate()
+                        inputBuffer.append(it)                        
+                        invalidate()
                     }
                 }
                 return true
@@ -215,7 +222,8 @@ class TerminalView @JvmOverloads constructor(
         val (text, color) = when (output) {
             is OutputLine.Stdout -> output.text to textColor
             is OutputLine.Stderr -> output.text to errorColor
-            is Output "[Process exited with code ${output.code}]" to promptColor
+            is OutputLine.Exit -> "[Process exited with code ${output.code}]" to promptColor
+            else -> "[Unknown Process Status]" to promptColor 
         }
         text.split("\n").forEach { lines.add(TermLine(it, color)) }
         if (lines.size > maxLines) lines.subList(0, lines.size - maxLines).clear()
@@ -229,7 +237,8 @@ class TerminalView @JvmOverloads constructor(
     }
 
     private fun calculateScrollStart(): Int {
-        val visibleLines = (height / (charHeight * lineSpacing return maxOf(0, lines.size - visibleLines + 2)
+        val visibleLines = (height / (charHeight * lineSpacing)).toInt() 
+        return maxOf(0, lines.size - visibleLines + 2)
     }
 
     private fun showSoftKeyboard() {
@@ -243,4 +252,4 @@ class TerminalView @JvmOverloads constructor(
         viewScope.cancel()
         viewScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     }
-} // Added the missing closing brace here
+}
