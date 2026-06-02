@@ -26,11 +26,17 @@ internal object FileUtils {
     /**
      * Extract a zip stream to a destination directory.
      * Guards against zip-slip attacks by canonicalizing paths.
+     *
+     * FIX: Changed to `suspend fun` so that the `onProgress` callback can be a
+     * suspending lambda — allowing callers inside a `flow {}` block to call
+     * `emit()` directly from the progress callback without a coroutine-scope
+     * violation ("Suspension functions can be called only within coroutine body").
      */
-    fun extractZip(
+    suspend fun extractZip(
         zipStream: InputStream,
         destDir: File,
-        onProgress: ((Float) -> Unit)? = null,
+        // FIX: was `((Float) -> Unit)?` — non-suspending lambda cannot call emit()
+        onProgress: (suspend (Float) -> Unit)? = null,
         totalBytes: Long = -1L,
     ) {
         var extracted = 0L

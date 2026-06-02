@@ -97,8 +97,8 @@ class TermuxBridge internal constructor(
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
         val f = File(vfs.tmpDir, "bash_${System.currentTimeMillis()}.sh")
-        f.writeText("#!/data/data/com.termux/files/usr/bin/bash
-$script")
+        // FIX: raw newline inside regular string literal is illegal in Kotlin — use \n escape
+        f.writeText("#!/data/data/com.termux/files/usr/bin/bash\n$script")
         return try {
             executor.executeScript(f, extraEnv = env)
         } finally { f.delete() }
@@ -106,13 +106,14 @@ $script")
 
     /**
      * Execute a Ruby script string.
-     * Escapes single quotes using the standard shell technique: '"'"'
+     * Escapes single quotes using the standard shell technique: '\''
      */
     suspend fun ruby(
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'"'"'")
+        // FIX: shell escape '"'"' must have inner double-quotes backslash-escaped in Kotlin string
+        val escaped = script.replace("'", "'\"'\"'")
         return run("ruby -e '$escaped'", env = env)
     }
 
@@ -124,7 +125,8 @@ $script")
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'"'"'")
+        // FIX: shell escape '"'"' must have inner double-quotes backslash-escaped in Kotlin string
+        val escaped = script.replace("'", "'\"'\"'")
         return run("perl -e '$escaped'", env = env)
     }
 
@@ -136,7 +138,8 @@ $script")
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'"'"'")
+        // FIX: shell escape '"'"' must have inner double-quotes backslash-escaped in Kotlin string
+        val escaped = script.replace("'", "'\"'\"'")
         return run("php -r '$escaped'", env = env)
     }
 
