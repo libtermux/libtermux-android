@@ -30,18 +30,6 @@ import java.io.File
 /**
  * High-level API bridge between Kotlin/Java application code
  * and the embedded Linux environment.
- *
- * This is the primary entry-point for developers using the library.
- *
- * Example:
- * ```kotlin
- * val result = bridge.run("echo Hello World")
- * val json   = bridge.runJson("python3 -c 'import json; print(json.dumps({\"x\":1}))'")
- * bridge.python("""
- * import math
- * print(math.sqrt(144))
- * """)
- * ```
  */
 class TermuxBridge internal constructor(
     @PublishedApi internal val executor: CommandExecutor,
@@ -51,27 +39,23 @@ class TermuxBridge internal constructor(
 
     // ── Shell Commands ────────────────────────────────────────────────────
 
-    /** Run a shell command and get the full result */
     suspend fun run(
         command: String,
         workDir: File? = null,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult = executor.execute(command, workDir, env)
 
-    /** Run and return stdout string (throws on non-zero exit) */
     suspend fun runOrThrow(command: String): String {
         val result = executor.execute(command)
         if (result.isFailure) throw TermuxCommandException(command, result)
         return result.stdout
     }
 
-    /** Run and stream output lines */
     fun runStreaming(
         command: String,
         workDir: File? = null,
     ): Flow<OutputLine> = executor.executeStreaming(command, workDir)
 
-    /** Run and stream only text lines (stdout/stderr interleaved as strings) */
     fun runStreamingText(command: String): Flow<String> =
         runStreaming(command).map { line ->
             when (line) {
@@ -83,14 +67,12 @@ class TermuxBridge internal constructor(
 
     // ── JSON Support ──────────────────────────────────────────────────────
 
-    /** Run command and parse stdout as JSON */
     suspend fun runJson(command: String): JsonElement {
         val result = executor.execute(command)
         if (result.isFailure) throw TermuxCommandException(command, result)
         return Json.parseToJsonElement(result.stdout.trim())
     }
 
-    /** Run command and parse into typed object */
     suspend inline fun <reified T> runAs(command: String): T {
         val result = executor.execute(command)
         if (result.isFailure) throw TermuxCommandException(command, result)
@@ -99,20 +81,17 @@ class TermuxBridge internal constructor(
 
     // ── Language Runners ──────────────────────────────────────────────────
 
-    /** Execute a Python script string */
     suspend fun python(
         script: String,
         args: List<String> = emptyList(),
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult = executor.executePython(script, args, env)
 
-    /** Execute a Node.js script string */
     suspend fun node(
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult = executor.executeNode(script, env)
 
-    /** Execute a Bash script string */
     suspend fun bash(
         script: String,
         env: Map<String, String> = emptyMap(),
@@ -125,78 +104,76 @@ $script")
         } finally { f.delete() }
     }
 
-    /** Execute a Ruby script string */
+    /**
+     * Execute a Ruby script string.
+     * Escapes single quotes using the standard shell technique: '"'"'
+     */
     suspend fun ruby(
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'\''")
+        val escaped = script.replace("'", "'"'"'")
         return run("ruby -e '$escaped'", env = env)
     }
 
-    /** Execute a Perl script string */
+    /**
+     * Execute a Perl script string.
+     * Escapes single quotes using the standard shell technique.
+     */
     suspend fun perl(
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'\''")
+        val escaped = script.replace("'", "'"'"'")
         return run("perl -e '$escaped'", env = env)
     }
 
-    /** Execute a PHP script string */
+    /**
+     * Execute a PHP script string.
+     * Escapes single quotes using the standard shell technique.
+     */
     suspend fun php(
         script: String,
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
-        val escaped = script.replace("'", "'\''")
+        val escaped = script.replace("'", "'"'"'")
         return run("php -r '$escaped'", env = env)
     }
 
     // ── File Operations ───────────────────────────────────────────────────
 
-    /** Write a file into HOME and optionally execute it */
     fun writeFile(path: String, content: String): File =
         vfs.writeHomeFile(path, content)
 
-    /** Write an executable script into PREFIX/bin */
     fun writeScript(name: String, content: String): File =
         vfs.writeScript(name, content)
 
-    /** Read a file from HOME */
     fun readFile(path: String): String? =
         runCatching { File(vfs.homeDir, path).readText() }.getOrNull()
 
-    /** Check if a file exists in HOME */
     fun fileExists(path: String): Boolean =
         File(vfs.homeDir, path).exists()
 
     // ── Package Management ────────────────────────────────────────────────
 
-    /** Install packages via pkg */
     suspend fun install(vararg packages: String): PkgResult =
         pkgManager.install(*packages)
 
-    /** Uninstall packages via pkg */
     suspend fun uninstall(vararg packages: String): PkgResult =
         pkgManager.uninstall(*packages)
 
-    /** Update all installed packages */
     suspend fun upgradeAll(): PkgResult =
         pkgManager.upgradeAll()
 
-    /** Update repository index */
     suspend fun updateRepo(): PkgResult =
         pkgManager.updateRepo()
 
-    /** Install pip packages */
     suspend fun pipInstall(vararg packages: String): PkgResult =
         pkgManager.pipInstall(*packages)
 
-    /** Install npm packages globally */
     suspend fun npmInstall(vararg packages: String): PkgResult =
         pkgManager.npmInstall(*packages)
 
-    /** Install gem packages */
     suspend fun gemInstall(vararg packages: String): PkgResult {
         val result = run("gem install ${packages.joinToString(" ")}")
         return if (result.isSuccess) PkgResult.Success(result.stdout) else PkgResult.Failed(result.stderr, result.exitCode)
@@ -204,26 +181,20 @@ $script")
 
     // ── Utilities ────────────────────────────────────────────────────────
 
-    /** Check if a tool/binary is available in PREFIX/bin */
     suspend fun hasCommand(command: String): Boolean =
         executor.hasBinary(command)
 
-    /** Get current PATH */
     suspend fun getPath(): String =
         executor.execute("echo $" + "PATH").stdout.trim()
 
-    /** Get disk usage of environment */
     fun getDiskUsage(): String = vfs.diskUsageString()
 
-    /** Get environment variables as map */
     fun getEnvironment(): Map<String, String> = vfs.buildEnv()
 
-    /** Get Linux kernel info */
     suspend fun getKernelInfo(): String =
         run("uname -a").stdout.trim()
 }
 
-/** Thrown when a command exits with non-zero code */
 class TermuxCommandException(
     val command: String,
     val result: ExecutionResult,

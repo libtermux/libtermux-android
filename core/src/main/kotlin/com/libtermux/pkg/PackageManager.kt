@@ -72,10 +72,11 @@ class PackageManager(private val executor: CommandExecutor) {
 
     /** List all installed packages */
     suspend fun listInstalled(): List<Package> {
-        // Use raw string to avoid illegal escape issues with backslash in awk
+        // Raw string to avoid backslash escape issues in awk command
         val result = executor.execute("""dpkg --list 2>/dev/null | awk '/^ii/{print $2,$3}'""")
         return result.stdoutLines().mapNotNull { line ->
-            val parts = line.trim().split(Regex("\s+"))
+            // Use explicit whitespace pattern instead of \s
+            val parts = line.trim().split(Regex("[ \t]+"))
             if (parts.size >= 2) Package(parts[0], parts[1], installed = true) else null
         }
     }
@@ -122,7 +123,8 @@ class PackageManager(private val executor: CommandExecutor) {
         return output.lines()
             .filter { it.contains("/") }
             .mapNotNull { line ->
-                val parts = line.trim().split(Regex("\s+"))
+                // Use explicit whitespace pattern instead of \s
+                val parts = line.trim().split(Regex("[ \t]+"))
                 if (parts.isNotEmpty()) {
                     val nameParts = parts[0].split("/")
                     Package(

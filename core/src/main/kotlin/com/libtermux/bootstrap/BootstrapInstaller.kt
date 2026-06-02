@@ -62,7 +62,7 @@ internal object BootstrapReleaseResolver {
 
     private const val API_URL = "https://api.github.com/repos/termux/termux-packages/releases?per_page=50"
 
-    // Fallback tags (newest first) — update these when new stable bootstraps are verified
+    // Fallback tags (newest first)
     private val FALLBACK_TAGS = listOf(
         "bootstrap-2026.05.24-r1+apt.android-7",
         "bootstrap-2026.05.17-r1+apt.android-7",
@@ -112,10 +112,6 @@ internal object BootstrapReleaseResolver {
         }
     }
 
-    /**
-     * Parse bootstrap-YYYY.MM.DD-rN+... into a numeric score for comparison.
-     * Returns 0 if the tag does not match the expected pattern.
-     */
     private fun parseVersionScore(tag: String): Long {
         val regex = Regex("""bootstrap-(\d{4})\.(\d{2})\.(\d{2})-r(\d+)""")
         val match = regex.find(tag) ?: return 0
@@ -144,13 +140,6 @@ class BootstrapInstaller(
         }
         .build()
 
-    /**
-     * Install the Termux bootstrap. Emits [InstallState] events.
-     * Safe to call multiple times — skips if already installed.
-     *
-     * Auto-resolves the latest bootstrap release when [TermuxConfig.bootstrapVersion]
-     * is [TermuxConfig.LATEST_BOOTSTRAP].
-     */
     fun install(forceReinstall: Boolean = false): Flow<InstallState> = flow {
         emit(InstallState.Checking)
 
@@ -172,7 +161,6 @@ class BootstrapInstaller(
                         else -> "bootstrap-$version+apt.android-7"
                     }
                 }
-                // GitHub release URLs require '+' in tag names to be percent-encoded as %2B
                 val encodedTag = tag.replace("+", "%2B")
                 val baseUrl = "https://github.com/termux/termux-packages/releases/download"
                 "$baseUrl/$encodedTag/bootstrap-${arch.termuxName}.zip"
@@ -180,7 +168,6 @@ class BootstrapInstaller(
 
             TermuxLogger.i("Downloading bootstrap for ${arch.termuxName}: $url")
 
-            // ----- Download -----
             val zipFile = File(context.cacheDir, "bootstrap-${arch.termuxName}.zip")
             var totalBytes = -1L
 
@@ -188,7 +175,7 @@ class BootstrapInstaller(
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     val errorMsg = when (response.code) {
-                        404 -> "HTTP 404: Bootstrap not found. Architecture '${arch.termuxName}' may not be available for this release, or the release was removed. Try setting a customBootstrapUrl."
+                        404 -> "HTTP 404: Bootstrap not found. Architecture '${arch.termuxName}' may not be available. Try setting a customBootstrapUrl."
                         403 -> "HTTP 403: Rate limited or forbidden by GitHub. Try again later or set a customBootstrapUrl."
                         else -> "HTTP ${response.code}: ${response.message}"
                     }
@@ -227,7 +214,6 @@ class BootstrapInstaller(
                 emit(InstallState.Downloading(1f, zipFile.length(), zipFile.length()))
             }
 
-            // ----- Extract -----
             TermuxLogger.i("Extracting bootstrap to ${vfs.prefixDir}")
             if (forceReinstall) {
                 vfs.prefixDir.deleteRecursivelyQuiet()
@@ -251,27 +237,23 @@ class BootstrapInstaller(
             }
             emit(InstallState.Extracting(1f))
 
-            // ----- Symlinks -----
+            // ===== SYMLINKS FIX: emit state first, then call regular function =====
             emit(InstallState.ProcessingSymlinks)
             val symlinksFile = File(vfs.prefixDir, "SYMLINKS.txt")
             if (symlinksFile.exists()) {
-                // processSymlinks is a regular function, call it directly (not inside emit)
                 processSymlinks(symlinksFile, vfs.prefixDir)
                 symlinksFile.delete()
             } else {
                 TermuxLogger.w("No SYMLINKS.txt found in bootstrap. Symlinks may be broken.")
             }
 
-            // ----- Permissions -----
             emit(InstallState.SettingPermissions)
             makeExecutable(vfs.prefixDir)
 
-            // Set sticky bit on tmp so any user/process can write (Termux convention)
             runCatching {
                 Runtime.getRuntime().exec(arrayOf("chmod", "1777", vfs.tmpDir.absolutePath)).waitFor()
             }
 
-            // ----- Verify -----
             emit(InstallState.Verifying)
             val shell = File(vfs.binDir, "bash")
             val sh    = File(vfs.binDir, "sh")
@@ -280,14 +262,12 @@ class BootstrapInstaller(
                 return@flow
             }
 
-            // Verify core binaries exist
             val coreBins = listOf("busybox", "dpkg", "pkg", "apt")
             val missing = coreBins.filter { !File(vfs.binDir, it).exists() }
             if (missing.isNotEmpty()) {
                 TermuxLogger.w("Missing core binaries: $missing")
             }
 
-            // ----- Mark installed -----
             vfs.markBootstrapInstalled()
             if (zipFile.exists()) zipFile.delete()
 
@@ -300,7 +280,6 @@ class BootstrapInstaller(
         }
     }.flowOn(Dispatchers.IO)
 
-    /** Uninstall the bootstrap completely */
     fun uninstall() {
         vfs.resetAll()
         TermuxLogger.i("Bootstrap uninstalled.")
