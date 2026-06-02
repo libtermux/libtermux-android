@@ -83,18 +83,22 @@ internal object FileUtils {
             if (line.isBlank() || line.startsWith("#")) return@forEachLine
 
             // Try multiple formats:
-            // 1. target←link   (original Termux format)
-            // 2. link→target   (arrow reversed)
-            // 3. link target   (space-separated, two columns)
+            // 1. target<--link   (original Termux format with unicode arrow)
+            // 2. link-->target   (arrow reversed)
+            // 3. link target     (space-separated, two columns)
             val parts = when {
-                line.contains("←") -> line.split("←").map { it.trim() }.let {
-                    if (it.size == 2) it else null
+                line.contains("←") -> { // unicode left arrow ←
+                    val split = line.split("←").map { it.trim() }
+                    if (split.size == 2) split else null
                 }
-                line.contains("→") -> line.split("→").map { it.trim() }.let {
-                    if (it.size == 2) listOf(it[1], it[0]) else null // reverse to target,link
+                line.contains("→") -> { // unicode right arrow →
+                    val split = line.split("→").map { it.trim() }
+                    if (split.size == 2) listOf(split[1], split[0]) else null // reverse to target,link
                 }
-                else -> line.split(Regex("\s+")).let {
-                    if (it.size >= 2) listOf(it[1], it[0]) else null // target,link
+                else -> {
+                    // Use Regex with proper escaping for whitespace
+                    val split = line.trim().split(Regex("[ 	]+"))
+                    if (split.size >= 2) listOf(split[1], split[0]) else null // target,link
                 }
             }
 

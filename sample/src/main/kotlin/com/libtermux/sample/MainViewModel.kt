@@ -112,7 +112,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (!termux.isInitialized) { emit(UiEvent.Toast("Install bootstrap first")); return }
         viewModelScope.launch {
             emit(UiEvent.Output("--- System Information ---"))
-            listOf("uname -a", "cat /proc/version", "free -h", "df -h \$PREFIX").forEach { cmd ->
+            // Use raw string to avoid escape issues with $PREFIX
+            listOf("uname -a", "cat /proc/version", "free -h", "df -h ${'$'}PREFIX").forEach { cmd ->
                 emit(UiEvent.Output("$ $cmd"))
                 val r = termux.bridge.run(cmd)
                 emit(UiEvent.Output(r.output, r.isFailure))

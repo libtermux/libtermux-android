@@ -36,7 +36,7 @@ import java.io.File
  * Example:
  * ```kotlin
  * val result = bridge.run("echo Hello World")
- * val json   = bridge.runJson("python3 -c 'import json; print(json.dumps({"x":1}))'")
+ * val json   = bridge.runJson("python3 -c 'import json; print(json.dumps({\"x\":1}))'")
  * bridge.python("""
  * import math
  * print(math.sqrt(144))
@@ -129,19 +129,28 @@ $script")
     suspend fun ruby(
         script: String,
         env: Map<String, String> = emptyMap(),
-    ): ExecutionResult = run("ruby -e '${script.replace("'", "\'")}'", env = env)
+    ): ExecutionResult {
+        val escaped = script.replace("'", "'\''")
+        return run("ruby -e '$escaped'", env = env)
+    }
 
     /** Execute a Perl script string */
     suspend fun perl(
         script: String,
         env: Map<String, String> = emptyMap(),
-    ): ExecutionResult = run("perl -e '${script.replace("'", "\'")}'", env = env)
+    ): ExecutionResult {
+        val escaped = script.replace("'", "'\''")
+        return run("perl -e '$escaped'", env = env)
+    }
 
     /** Execute a PHP script string */
     suspend fun php(
         script: String,
         env: Map<String, String> = emptyMap(),
-    ): ExecutionResult = run("php -r '${script.replace("'", "\'")}'", env = env)
+    ): ExecutionResult {
+        val escaped = script.replace("'", "'\''")
+        return run("php -r '$escaped'", env = env)
+    }
 
     // ── File Operations ───────────────────────────────────────────────────
 
@@ -188,10 +197,10 @@ $script")
         pkgManager.npmInstall(*packages)
 
     /** Install gem packages */
-    suspend fun gemInstall(vararg packages: String): PkgResult =
-        run("gem install ${packages.joinToString(" ")}").let {
-            if (it.isSuccess) PkgResult.Success(it.stdout) else PkgResult.Failed(it.stderr, it.exitCode)
-        }
+    suspend fun gemInstall(vararg packages: String): PkgResult {
+        val result = run("gem install ${packages.joinToString(" ")}")
+        return if (result.isSuccess) PkgResult.Success(result.stdout) else PkgResult.Failed(result.stderr, result.exitCode)
+    }
 
     // ── Utilities ────────────────────────────────────────────────────────
 
@@ -201,7 +210,7 @@ $script")
 
     /** Get current PATH */
     suspend fun getPath(): String =
-        executor.execute("echo \$PATH").stdout.trim()
+        executor.execute("echo $" + "PATH").stdout.trim()
 
     /** Get disk usage of environment */
     fun getDiskUsage(): String = vfs.diskUsageString()

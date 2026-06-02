@@ -72,7 +72,8 @@ class PackageManager(private val executor: CommandExecutor) {
 
     /** List all installed packages */
     suspend fun listInstalled(): List<Package> {
-        val result = executor.execute("dpkg --list 2>/dev/null | awk '/^ii/{print \$2,\$3}'")
+        // Use raw string to avoid illegal escape issues with backslash in awk
+        val result = executor.execute("""dpkg --list 2>/dev/null | awk '/^ii/{print $2,$3}'""")
         return result.stdoutLines().mapNotNull { line ->
             val parts = line.trim().split(Regex("\s+"))
             if (parts.size >= 2) Package(parts[0], parts[1], installed = true) else null

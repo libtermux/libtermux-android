@@ -255,6 +255,7 @@ class BootstrapInstaller(
             emit(InstallState.ProcessingSymlinks)
             val symlinksFile = File(vfs.prefixDir, "SYMLINKS.txt")
             if (symlinksFile.exists()) {
+                // processSymlinks is a regular function, call it directly (not inside emit)
                 processSymlinks(symlinksFile, vfs.prefixDir)
                 symlinksFile.delete()
             } else {
