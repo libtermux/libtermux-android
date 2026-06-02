@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux
@@ -53,18 +53,9 @@ data class TermuxConfig(
 ) {
     companion object {
         const val LATEST_BOOTSTRAP = "LATEST"
-        private const val BASE_RELEASE_URL =
-            "https://github.com/termux/termux-packages/releases/download"
 
         @JvmStatic fun default(): TermuxConfig = TermuxConfig()
-
         @JvmStatic fun builder(): Builder = Builder()
-
-        internal fun bootstrapUrl(arch: Architecture, version: String): String {
-            val tag = if (version == LATEST_BOOTSTRAP) "bootstrap-2024.01.31"
-                      else "bootstrap-$version"
-            return "$BASE_RELEASE_URL/$tag/bootstrap-${arch.termuxName}.zip"
-        }
     }
 
     class Builder {

@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.bridge
@@ -29,14 +29,14 @@ import java.io.File
 
 /**
  * High-level API bridge between Kotlin/Java application code
- * and the Linux environment.
+ * and the embedded Linux environment.
  *
  * This is the primary entry-point for developers using the library.
  *
  * Example:
  * ```kotlin
  * val result = bridge.run("echo Hello World")
- * val json   = bridge.runJson("python3 -c 'import json; print(json.dumps({\"x\":1}))'")
+ * val json   = bridge.runJson("python3 -c 'import json; print(json.dumps({"x":1}))'")
  * bridge.python("""
  * import math
  * print(math.sqrt(144))
@@ -44,7 +44,7 @@ import java.io.File
  * ```
  */
 class TermuxBridge internal constructor(
-    @PublishedApi internal val executor: CommandExecutor, // <-- FIXED HERE
+    @PublishedApi internal val executor: CommandExecutor,
     private val pkgManager: PackageManager,
     val vfs: VirtualFileSystem,
 ) {
@@ -71,7 +71,7 @@ class TermuxBridge internal constructor(
         workDir: File? = null,
     ): Flow<OutputLine> = executor.executeStreaming(command, workDir)
 
-    /** Run and stream only text lines (stdout) */
+    /** Run and stream only text lines (stdout/stderr interleaved as strings) */
     fun runStreamingText(command: String): Flow<String> =
         runStreaming(command).map { line ->
             when (line) {
@@ -118,7 +118,8 @@ class TermuxBridge internal constructor(
         env: Map<String, String> = emptyMap(),
     ): ExecutionResult {
         val f = File(vfs.tmpDir, "bash_${System.currentTimeMillis()}.sh")
-        f.writeText("#!/data/data/com.termux/files/usr/bin/bash\n$script")
+        f.writeText("#!/data/data/com.termux/files/usr/bin/bash
+$script")
         return try {
             executor.executeScript(f, extraEnv = env)
         } finally { f.delete() }
@@ -128,13 +129,19 @@ class TermuxBridge internal constructor(
     suspend fun ruby(
         script: String,
         env: Map<String, String> = emptyMap(),
-    ): ExecutionResult = run("ruby -e '${script.replace("'", "\\'")}'", env = env)
+    ): ExecutionResult = run("ruby -e '${script.replace("'", "\'")}'", env = env)
 
     /** Execute a Perl script string */
     suspend fun perl(
         script: String,
         env: Map<String, String> = emptyMap(),
-    ): ExecutionResult = run("perl -e '${script.replace("'", "\\'")}'", env = env)
+    ): ExecutionResult = run("perl -e '${script.replace("'", "\'")}'", env = env)
+
+    /** Execute a PHP script string */
+    suspend fun php(
+        script: String,
+        env: Map<String, String> = emptyMap(),
+    ): ExecutionResult = run("php -r '${script.replace("'", "\'")}'", env = env)
 
     // ── File Operations ───────────────────────────────────────────────────
 
@@ -150,19 +157,27 @@ class TermuxBridge internal constructor(
     fun readFile(path: String): String? =
         runCatching { File(vfs.homeDir, path).readText() }.getOrNull()
 
+    /** Check if a file exists in HOME */
+    fun fileExists(path: String): Boolean =
+        File(vfs.homeDir, path).exists()
+
     // ── Package Management ────────────────────────────────────────────────
 
-    /** Install packages */
+    /** Install packages via pkg */
     suspend fun install(vararg packages: String): PkgResult =
         pkgManager.install(*packages)
 
-    /** Uninstall packages */
+    /** Uninstall packages via pkg */
     suspend fun uninstall(vararg packages: String): PkgResult =
         pkgManager.uninstall(*packages)
 
-    /** Update all packages */
+    /** Update all installed packages */
     suspend fun upgradeAll(): PkgResult =
         pkgManager.upgradeAll()
+
+    /** Update repository index */
+    suspend fun updateRepo(): PkgResult =
+        pkgManager.updateRepo()
 
     /** Install pip packages */
     suspend fun pipInstall(vararg packages: String): PkgResult =
@@ -172,9 +187,15 @@ class TermuxBridge internal constructor(
     suspend fun npmInstall(vararg packages: String): PkgResult =
         pkgManager.npmInstall(*packages)
 
+    /** Install gem packages */
+    suspend fun gemInstall(vararg packages: String): PkgResult =
+        run("gem install ${packages.joinToString(" ")}").let {
+            if (it.isSuccess) PkgResult.Success(it.stdout) else PkgResult.Failed(it.stderr, it.exitCode)
+        }
+
     // ── Utilities ────────────────────────────────────────────────────────
 
-    /** Check if a tool/binary is available */
+    /** Check if a tool/binary is available in PREFIX/bin */
     suspend fun hasCommand(command: String): Boolean =
         executor.hasBinary(command)
 
@@ -187,6 +208,10 @@ class TermuxBridge internal constructor(
 
     /** Get environment variables as map */
     fun getEnvironment(): Map<String, String> = vfs.buildEnv()
+
+    /** Get Linux kernel info */
+    suspend fun getKernelInfo(): String =
+        run("uname -a").stdout.trim()
 }
 
 /** Thrown when a command exits with non-zero code */

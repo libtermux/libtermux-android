@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.fs
@@ -23,15 +23,17 @@ import java.io.File
 /**
  * Manages the virtual Linux directory structure inside the app's private storage.
  *
- * Layout:
+ * Layout mirrors Termux exactly:
  *   filesDir/libtermux/
  *     ├── usr/           ← PREFIX  ($PREFIX)
- *     │   ├── bin/       ← executables
+ *     │   ├── bin/       ← executables (bash, python3, pkg, apt ...)
  *     │   ├── lib/       ← shared libraries
- *     │   ├── etc/       ← config files
- *     │   └── share/     ← data files
+ *     │   ├── libexec/   ← auxiliary executables
+ *     │   ├── etc/       ← config files (apt sources, resolv.conf ...)
+ *     │   ├── share/     ← data files
+ *     │   ├── var/       ← variable data (logs, caches)
+ *     │   └── tmp/       ← temporary files (also exposed as $TMPDIR)
  *     ├── home/          ← HOME ($HOME)
- *     ├── tmp/           ← TMPDIR
  *     └── .bootstrap_ok  ← marker file (bootstrap installed)
  */
 class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
@@ -40,9 +42,10 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
 
     val prefixDir: File   = File(root, "usr").also       { it.mkdirs() }
     val homeDir: File     = File(root, "home").also      { it.mkdirs() }
-    val tmpDir: File      = File(root, "tmp").also       { it.mkdirs() }
+    val tmpDir: File      = File(prefixDir, "tmp").also  { it.mkdirs() }
     val binDir: File      = File(prefixDir, "bin").also  { it.mkdirs() }
     val libDir: File      = File(prefixDir, "lib").also  { it.mkdirs() }
+    val libexecDir: File  = File(prefixDir, "libexec").also { it.mkdirs() }
     val etcDir: File      = File(prefixDir, "etc").also  { it.mkdirs() }
     val shareDir: File    = File(prefixDir, "share").also{ it.mkdirs() }
     val varDir: File      = File(prefixDir, "var").also  { it.mkdirs() }
@@ -52,7 +55,6 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
     val isBootstrapInstalled: Boolean get() = markerFile.exists()
 
     fun markBootstrapInstalled() { markerFile.createNewFile() }
-
     fun clearBootstrapMarker() { markerFile.delete() }
 
     fun resetAll() {
@@ -63,9 +65,8 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
         tmpDir.mkdirs()
     }
 
-    /** Build environment variables map for process execution */
+    /** Build environment variables map for process execution — mirrors Termux exactly */
     fun buildEnv(extra: Map<String, String> = emptyMap()): Map<String, String> {
-        val arch = config.architecture.resolved()
         return buildMap {
             put("HOME",    homeDir.absolutePath)
             put("PREFIX",  prefixDir.absolutePath)
@@ -78,9 +79,12 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
             put("LD_LIBRARY_PATH", buildLdLibraryPath())
             put("LD_PRELOAD",      findLdPreload())
             put("TERMUX_PREFIX",   prefixDir.absolutePath)
+            put("TERMUX_HOME",     homeDir.absolutePath)
+            put("TERMUX_VERSION",  "0.118.0") // Compatibility shim
             put("ANDROID_DATA",    "/data")
             put("ANDROID_ROOT",    "/system")
-            // Merge custom env vars
+            put("TERMUX_API_VERSION", "0.50.1")
+            // Merge custom env vars from config
             putAll(config.environmentVariables)
             putAll(extra)
         }
@@ -126,7 +130,7 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
         return file
     }
 
-    /** Get disk usage of the entire libtermux root */
+    /** Get disk usage of the entire libtermux root in bytes */
     fun diskUsageBytes(): Long = root.walkTopDown().sumOf { it.length() }
 
     /** Human-readable disk usage */

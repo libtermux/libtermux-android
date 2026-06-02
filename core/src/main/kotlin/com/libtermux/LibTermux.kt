@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux
@@ -55,7 +55,7 @@ import kotlinx.coroutines.flow.onEach
  * ## Quick Start (Java)
  * ```java
  * LibTermux termux = LibTermux.getInstance(context);
- * termux.initializeBlocking(); // blocks current thread
+ * termux.initializeBlocking(); // blocks current thread — do NOT call on main thread
  * String output = termux.getBridge().runOrThrow("uname -a");
  * ```
  */
@@ -98,6 +98,8 @@ class LibTermux private constructor(
      * Initialize LibTermux.
      * Downloads and installs the bootstrap on first run (auto-skips if installed).
      * Returns a [Flow] of [InstallState] events.
+     *
+     * @param forceReinstall If true, wipes existing environment and reinstalls.
      */
     fun initialize(forceReinstall: Boolean = false): Flow<InstallState> {
         TermuxLogger.level = config.logLevel
@@ -109,7 +111,7 @@ class LibTermux private constructor(
                     is InstallState.Completed,
                     is InstallState.AlreadyInstalled -> {
                         _state.value = LibTermuxState.Ready
-                        TermuxLogger.i("LibTermux is ready.")
+                        TermuxLogger.i("LibTermux is ready. Prefix=${vfs.prefixDir}")
                         if (config.backgroundExecutionEnabled) {
                             TermuxBackgroundService.start(context, config)
                         }
@@ -117,7 +119,7 @@ class LibTermux private constructor(
                     is InstallState.Failed -> {
                         _state.value = LibTermuxState.Error(installState.error)
                     }
-                    else -> { /* intermediate states */ }
+                    else -> { /* intermediate states: Downloading, Extracting, etc. */ }
                 }
             }
             .catch { e ->

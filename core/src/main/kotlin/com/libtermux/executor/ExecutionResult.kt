@@ -1,19 +1,15 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  * http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
@@ -35,7 +31,7 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
 
 /**
- * Result of a command execution.
+ * Result of a command execution inside the Termux environment.
  */
 @Serializable
 data class ExecutionResult(
@@ -65,29 +61,18 @@ data class ExecutionResult(
      * - `Map<String, Any>` / `Map<String, *>`  → converted via JsonObject
      * - `List<Any>`                             → converted via JsonArray
      * - Any `@Serializable` data class          → standard decoding
-     *
-     * Example:
-     * ```kotlin
-     * val map  = result.parseJson<Map<String, Any>>()
-     * val user = result.parseJson<User>()          // @Serializable data class
-     * ```
      */
     @Suppress("UNCHECKED_CAST")
     inline fun <reified T> parseJson(): T {
         val text = stdout.trim()
         val element = json.parseToJsonElement(text)
 
-        // ── Special case: caller wants Map<String, Any> (not @Serializable) ──
         if (isMapType<T>()) {
             return (element as JsonObject).toAnyMap() as T
         }
-
-        // ── Special case: caller wants List<Any> ──
         if (isListType<T>()) {
             return (element as JsonArray).toAnyList() as T
         }
-
-        // ── Default: use kotlinx.serialization decoder ──
         return json.decodeFromString(text)
     }
 
@@ -98,7 +83,6 @@ data class ExecutionResult(
         "ExecutionResult(exit=$exitCode, time=${executionTimeMs}ms, cmd='$command')"
 
     companion object {
-        // FIXED: Added @PublishedApi and internal
         @PublishedApi
         internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
     }
@@ -126,8 +110,6 @@ internal inline fun <reified T> isListType(): Boolean {
 }
 
 // ── JsonElement → Kotlin Any converters ─────────────────────────────────────
-
-// FIXED: Added @PublishedApi to all converters accessed by inline functions
 
 @PublishedApi
 internal fun JsonObject.toAnyMap(): Map<String, Any?> =

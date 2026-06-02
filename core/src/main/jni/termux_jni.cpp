@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 #include <jni.h>
@@ -42,8 +42,6 @@ Java_com_libtermux_utils_NativeUtils_setExecutableRecursive(
     const char* path = env->GetStringUTFChars(path_str, nullptr);
     if (!path) return -1;
 
-    // chmod via system call
-    // Walk handled by Kotlin side; this sets single file
     int result = chmod(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     env->ReleaseStringUTFChars(path_str, path);
 
@@ -74,7 +72,6 @@ Java_com_libtermux_utils_NativeUtils_createSymlink(
         return -1;
     }
 
-    // Remove existing symlink/file
     unlink(linkPath);
     int result = symlink(target, linkPath);
 

@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.utils
@@ -23,8 +23,10 @@ import java.util.zip.ZipInputStream
 
 internal object FileUtils {
 
-    /** Extract zip stream to destination directory.
-     *  Supports Termux SYMLINKS file format. */
+    /**
+     * Extract a zip stream to a destination directory.
+     * Guards against zip-slip attacks by canonicalizing paths.
+     */
     fun extractZip(
         zipStream: InputStream,
         destDir: File,
@@ -32,16 +34,30 @@ internal object FileUtils {
         totalBytes: Long = -1L,
     ) {
         var extracted = 0L
+        val canonicalDest = destDir.canonicalFile
+
         ZipInputStream(zipStream.buffered()).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
-                val outFile = File(destDir, entry.name)
+                val outFile = File(destDir, entry.name).canonicalFile
+
+                // Zip-slip protection: ensure extracted file stays inside destDir
+                if (!outFile.path.startsWith(canonicalDest.path + File.separator) &&
+                    outFile.path != canonicalDest.path
+                ) {
+                    TermuxLogger.w("Skipping malicious zip entry: ${entry.name}")
+                    zis.closeEntry()
+                    entry = zis.nextEntry
+                    continue
+                }
+
                 if (entry.isDirectory) {
                     outFile.mkdirs()
                 } else {
                     outFile.parentFile?.mkdirs()
                     outFile.outputStream().use { out -> zis.copyTo(out) }
-                    extracted += entry.size
+                    val entrySize = if (entry.size > 0) entry.size else entry.compressedSize.coerceAtLeast(0)
+                    extracted += entrySize
                     if (totalBytes > 0) onProgress?.invoke(extracted.toFloat() / totalBytes)
                 }
                 zis.closeEntry()
@@ -50,26 +66,68 @@ internal object FileUtils {
         }
     }
 
-    /** Process Termux SYMLINKS file and create symlinks */
+    /**
+     * Process Termux SYMLINKS.txt and create symlinks.
+     * Supports multiple delimiter styles used across different bootstrap versions.
+     */
     fun processSymlinks(symlinksFile: File, baseDir: File) {
-        if (!symlinksFile.exists()) return
+        if (!symlinksFile.exists()) {
+            TermuxLogger.d("No SYMLINKS.txt found at ${symlinksFile.absolutePath}")
+            return
+        }
+
+        var processed = 0
+        var failed = 0
+
         symlinksFile.forEachLine { line ->
-            val parts = line.split("←")
-            if (parts.size == 2) {
-                val target = parts[0].trim()
-                val linkPath = File(baseDir, parts[1].trim())
-                linkPath.parentFile?.mkdirs()
-                runCatching { linkPath.delete() }
-                runCatching {
-                    Runtime.getRuntime().exec(
-                        arrayOf("ln", "-sf", target, linkPath.absolutePath)
-                    ).waitFor()
+            if (line.isBlank() || line.startsWith("#")) return@forEachLine
+
+            // Try multiple formats:
+            // 1. target←link   (original Termux format)
+            // 2. link→target   (arrow reversed)
+            // 3. link target   (space-separated, two columns)
+            val parts = when {
+                line.contains("←") -> line.split("←").map { it.trim() }.let {
+                    if (it.size == 2) it else null
+                }
+                line.contains("→") -> line.split("→").map { it.trim() }.let {
+                    if (it.size == 2) listOf(it[1], it[0]) else null // reverse to target,link
+                }
+                else -> line.split(Regex("\s+")).let {
+                    if (it.size >= 2) listOf(it[1], it[0]) else null // target,link
                 }
             }
+
+            if (parts == null || parts.size != 2) {
+                TermuxLogger.w("Cannot parse symlink line: $line")
+                failed++
+                return@forEachLine
+            }
+
+            val target = parts[0]
+            val linkPath = File(baseDir, parts[1])
+
+            linkPath.parentFile?.mkdirs()
+            runCatching { linkPath.delete() }
+
+            val exitCode = runCatching {
+                Runtime.getRuntime().exec(
+                    arrayOf("ln", "-sf", target, linkPath.absolutePath)
+                ).waitFor()
+            }.getOrDefault(-1)
+
+            if (exitCode == 0) {
+                processed++
+            } else {
+                TermuxLogger.w("Failed to create symlink: $linkPath -> $target (exit=$exitCode)")
+                failed++
+            }
         }
+
+        TermuxLogger.i("Symlinks processed: $processed OK, $failed failed")
     }
 
-    /** Set executable permission recursively on directory */
+    /** Set executable permission recursively on all files under a directory */
     fun makeExecutable(dir: File) {
         dir.walkTopDown().forEach { file ->
             if (file.isFile) file.setExecutable(true, false)
@@ -108,7 +166,7 @@ internal object FileUtils {
         return bytesCopied
     }
 
-    /** Delete directory recursively */
+    /** Delete directory recursively, ignoring errors */
     fun File.deleteRecursivelyQuiet(): Boolean =
         runCatching { deleteRecursively() }.getOrDefault(false)
 }

@@ -31,16 +31,16 @@ class MainActivity : AppCompatActivity() {
         vm.uiState.onEach { state ->
             binding.tvStatus.text = state.status
             binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
-            
+
             if (state.isLoading && state.installProgress > 0f) {
                 binding.progressBar.isIndeterminate = false
                 binding.progressBar.progress = (state.installProgress * 100).toInt()
             } else if (state.isLoading) {
                 binding.progressBar.isIndeterminate = true
             }
-            
+
             if (state.isReady) {
-                binding.tvStatus.setTextColor(getColor(android.R.color.holo_green_dark)) // FIXED: Removed custom color dependency
+                binding.tvStatus.setTextColor(getColor(android.R.color.holo_green_dark))
             }
         }.launchIn(lifecycleScope)
 
@@ -66,7 +66,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Handle "Enter" key on the EditText
         binding.etCommand.setOnEditorActionListener { _, _, _ ->
             binding.btnRun.performClick()
             true

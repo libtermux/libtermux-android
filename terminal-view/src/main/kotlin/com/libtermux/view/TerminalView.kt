@@ -1,18 +1,18 @@
 /**
-LibTermux-Android
-Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-Author: cybernahid-dev (Systems Developer)
-Project: https://github.com/AeonCoreX-Lab/libtermux-android
-*/
+ * LibTermux-Android
+ * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * Author: cybernahid-dev (Systems Developer)
+ * Project: https://github.com/AeonCoreX-Lab/libtermux-android
+ */
 package com.libtermux.view
 
 import android.content.Context
@@ -33,25 +33,32 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
-// Define the TermLine data class to hold text and its color
+/** A single terminal line with text and color */
 data class TermLine(val text: String, val color: Int)
 
 /**
-A terminal emulator View that renders output from a LibTermux session.
-Usage in XML:
-<com.libtermux.view.TerminalView
-android:id="@+id/terminalView"
-android:layout_width="match_parent"
-android:layout_height="match_parent" />
-Usage in Kotlin:
-binding.terminalView.attachSession(session)
-session.run("python3 -c 'for i in range(10): print(i)'")
-*/
+ * A terminal emulator View that renders output from a LibTermux session.
+ *
+ * Usage in XML:
+ * ```xml
+ * <com.libtermux.view.TerminalView
+ *     android:id="@+id/terminalView"
+ *     android:layout_width="match_parent"
+ *     android:layout_height="match_parent" />
+ * ```
+ *
+ * Usage in Kotlin:
+ * ```kotlin
+ * binding.terminalView.attachSession(session)
+ * session.run("python3 -c 'for i in range(10): print(i)'")
+ * ```
+ */
 class TerminalView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
     // ── Appearance ────────────────────────────────────────────────────────
     var terminalBackgroundColor: Int = Color.parseColor("#1E1E2E")
         set(value) {
@@ -73,9 +80,7 @@ class TerminalView @JvmOverloads constructor(
         color = textColor
         typeface = fontFamily
     }
-    private val cursorPaint = Paint().apply {
-        color = cursorColor
-    }
+    private val cursorPaint = Paint().apply { color = cursorColor }
     private var charWidth  = 0f
     private var charHeight = 0f
     private var viewScope  = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -100,7 +105,7 @@ class TerminalView @JvmOverloads constructor(
             .launchIn(viewScope)
     }
 
-    /** Detach current session */    
+    /** Detach current session */
     fun detach() {
         currentSession = null
     }
@@ -128,7 +133,7 @@ class TerminalView @JvmOverloads constructor(
         invalidate()
     }
 
-    // ── Drawing──────────────────
+    // ── Drawing ───────────────────────────────────────────────────────────
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawColor(terminalBackgroundColor)
@@ -150,7 +155,7 @@ class TerminalView @JvmOverloads constructor(
 
         // Draw cursor
         val cursorX = paddingLeft + (inputBuffer.length + 2) * charWidth
-        canvas.drawRect(cursorX, inputY - charHeight, cursorX + charWidth, inputY, cursorPaint)    
+        canvas.drawRect(cursorX, inputY - charHeight, cursorX + charWidth, inputY, cursorPaint)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -158,7 +163,7 @@ class TerminalView @JvmOverloads constructor(
         updateTextSize()
     }
 
-    // ── Input ─────────────────────────────────────────────────────────────
+    // ── Input ───────────────────────────────────────────────────────────
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             requestFocus()
@@ -200,7 +205,7 @@ class TerminalView @JvmOverloads constructor(
                     if (it == "\n") {
                         performEditorAction(EditorInfo.IME_ACTION_SEND)
                     } else {
-                        inputBuffer.append(it)                        
+                        inputBuffer.append(it)
                         invalidate()
                     }
                 }
@@ -217,13 +222,12 @@ class TerminalView @JvmOverloads constructor(
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    // ── Private helpers ─────────────────────────────────────────────────
     private fun appendLine(output: OutputLine) {
         val (text, color) = when (output) {
             is OutputLine.Stdout -> output.text to textColor
             is OutputLine.Stderr -> output.text to errorColor
-            is OutputLine.Exit -> "[Process exited with code ${output.code}]" to promptColor
-            else -> "[Unknown Process Status]" to promptColor 
+            is OutputLine.Exit   -> "[Process exited with code ${output.code}]" to promptColor
         }
         text.split("\n").forEach { lines.add(TermLine(it, color)) }
         if (lines.size > maxLines) lines.subList(0, lines.size - maxLines).clear()
@@ -237,7 +241,7 @@ class TerminalView @JvmOverloads constructor(
     }
 
     private fun calculateScrollStart(): Int {
-        val visibleLines = (height / (charHeight * lineSpacing)).toInt() 
+        val visibleLines = (height / (charHeight * lineSpacing)).toInt()
         return maxOf(0, lines.size - visibleLines + 2)
     }
 

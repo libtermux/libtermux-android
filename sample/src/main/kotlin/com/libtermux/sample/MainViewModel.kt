@@ -45,7 +45,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             termux.initialize(forceReinstall).collect { state ->
                 when (state) {
-                    is InstallState.Checking          -> updateStatus("Checking…", true)
+                    is InstallState.Checking          -> updateStatus("Checking...", true)
                     is InstallState.AlreadyInstalled  -> {
                         updateStatus("Already installed", false)
                         onReady()
@@ -55,10 +55,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         val totalMb = state.totalBytes / (1024 * 1024)
                         updateStatus("Downloading ${mb}MB / ${totalMb}MB", true, state.progress)
                     }
-                    is InstallState.Extracting        -> updateStatus("Extracting…", true, state.progress)
-                    is InstallState.ProcessingSymlinks-> updateStatus("Setting up symlinks…", true)
-                    is InstallState.SettingPermissions-> updateStatus("Setting permissions…", true)
-                    is InstallState.Verifying         -> updateStatus("Verifying…", true)
+                    is InstallState.Extracting        -> updateStatus("Extracting...", true, state.progress)
+                    is InstallState.ProcessingSymlinks-> updateStatus("Setting up symlinks...", true)
+                    is InstallState.SettingPermissions-> updateStatus("Setting permissions...", true)
+                    is InstallState.Verifying         -> updateStatus("Verifying...", true)
                     is InstallState.Completed         -> {
                         updateStatus("Ready ✓", false)
                         emit(UiEvent.Output("Bootstrap installed successfully!"))
@@ -111,7 +111,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun runSysInfo() {
         if (!termux.isInitialized) { emit(UiEvent.Toast("Install bootstrap first")); return }
         viewModelScope.launch {
-            emit(UiEvent.Output("─── System Information ───"))
+            emit(UiEvent.Output("--- System Information ---"))
             listOf("uname -a", "cat /proc/version", "free -h", "df -h \$PREFIX").forEach { cmd ->
                 emit(UiEvent.Output("$ $cmd"))
                 val r = termux.bridge.run(cmd)

@@ -1,22 +1,23 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.executor
 
 import com.libtermux.TermuxConfig
 import com.libtermux.fs.VirtualFileSystem
+import com.libtermux.utils.NativeUtils
 import com.libtermux.utils.TermuxLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,10 @@ import java.io.File
 import java.io.InputStreamReader
 
 /**
- * Core process executor that runs commands inside the VFS environment.
+ * Core process executor that runs commands inside the VFS Linux environment.
+ *
+ * Supports both standard ProcessBuilder execution and native PTY-backed
+ * interactive execution (via JNI) for full terminal emulation.
  */
 class CommandExecutor(
     private val config: TermuxConfig,
@@ -41,7 +45,7 @@ class CommandExecutor(
      *
      * @param command   Shell command string (e.g. "python3 -c 'print(1+1)'")
      * @param workDir   Working directory (defaults to HOME)
-     * @param extraEnv  Extra environment variables
+     * @param extraEnv  Extra environment variables merged on top of VFS env
      * @param shell     Shell binary name in PREFIX/bin (default: bash)
      */
     suspend fun execute(
@@ -82,20 +86,17 @@ class CommandExecutor(
         val stdoutReader = BufferedReader(InputStreamReader(proc.inputStream))
         val stderrReader = BufferedReader(InputStreamReader(proc.errorStream))
 
-        // Read stdout and stderr concurrently
-        val stdoutThread = Thread {
-            runCatching {
-                stdoutReader.forEachLine { /* stored in main loop */ }
-            }
-        }
+        val stdoutLines = mutableListOf<String>()
+        val stderrLines = mutableListOf<String>()
+
+        val stdoutThread = Thread { stdoutReader.forEachLine { stdoutLines.add(it) } }
+        val stderrThread = Thread { stderrReader.forEachLine { stderrLines.add(it) } }
+        stdoutThread.start()
+        stderrThread.start()
 
         try {
-            // Interleave stdout/stderr
-            val stdoutLines = mutableListOf<String>()
-            val stderrLines = mutableListOf<String>()
-
-            Thread { stdoutReader.forEachLine { stdoutLines.add(it) } }.also { it.start() }.join(config.maxCommandTimeoutMs)
-            Thread { stderrReader.forEachLine { stderrLines.add(it) } }.also { it.start() }.join(100)
+            stdoutThread.join(config.maxCommandTimeoutMs)
+            stderrThread.join(1000)
 
             stdoutLines.forEach { emit(OutputLine.Stdout(it)) }
             stderrLines.forEach { emit(OutputLine.Stderr(it)) }
@@ -103,6 +104,8 @@ class CommandExecutor(
             val exit = proc.waitFor()
             emit(OutputLine.Exit(exit))
         } finally {
+            runCatching { stdoutThread.interrupt() }
+            runCatching { stderrThread.interrupt() }
             proc.destroyForcibly()
         }
     }.flowOn(Dispatchers.IO)

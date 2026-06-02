@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.pkg
@@ -18,8 +18,8 @@ package com.libtermux.pkg
 import com.libtermux.executor.CommandExecutor
 import com.libtermux.executor.ExecutionResult
 import com.libtermux.utils.TermuxLogger
-import kotlinx.coroutines.flow.Flow
 
+/** Package metadata */
 data class Package(
     val name: String,
     val version: String = "",
@@ -36,11 +36,12 @@ sealed class PkgResult {
 }
 
 /**
- * High-level package manager wrapping pkg/apt commands.
+ * High-level package manager wrapping pkg/apt/dpkg commands.
+ * Provides idiomatic Kotlin APIs for the full Termux package ecosystem.
  */
 class PackageManager(private val executor: CommandExecutor) {
 
-    /** Install one or more packages */
+    /** Install one or more packages via pkg */
     suspend fun install(vararg packages: String): PkgResult {
         val names = packages.joinToString(" ")
         TermuxLogger.i("pkg install: $names")
@@ -48,7 +49,7 @@ class PackageManager(private val executor: CommandExecutor) {
         return result.toPkgResult(names)
     }
 
-    /** Uninstall one or more packages */
+    /** Uninstall one or more packages via pkg */
     suspend fun uninstall(vararg packages: String): PkgResult {
         val names = packages.joinToString(" ")
         TermuxLogger.i("pkg uninstall: $names")
@@ -73,7 +74,7 @@ class PackageManager(private val executor: CommandExecutor) {
     suspend fun listInstalled(): List<Package> {
         val result = executor.execute("dpkg --list 2>/dev/null | awk '/^ii/{print \$2,\$3}'")
         return result.stdoutLines().mapNotNull { line ->
-            val parts = line.trim().split(Regex("\\s+"))
+            val parts = line.trim().split(Regex("\s+"))
             if (parts.size >= 2) Package(parts[0], parts[1], installed = true) else null
         }
     }
@@ -120,7 +121,7 @@ class PackageManager(private val executor: CommandExecutor) {
         return output.lines()
             .filter { it.contains("/") }
             .mapNotNull { line ->
-                val parts = line.trim().split(Regex("\\s+"))
+                val parts = line.trim().split(Regex("\s+"))
                 if (parts.isNotEmpty()) {
                     val nameParts = parts[0].split("/")
                     Package(

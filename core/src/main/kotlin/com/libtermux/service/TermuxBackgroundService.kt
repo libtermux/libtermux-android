@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.service
@@ -33,7 +33,6 @@ import com.libtermux.utils.TermuxLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.io.File
 
 /**
  * Foreground service that keeps the Termux environment alive
@@ -41,10 +40,9 @@ import java.io.File
  *
  * Usage:
  * ```kotlin
- * // Start
  * TermuxBackgroundService.start(context, config)
- * // Stop
  * TermuxBackgroundService.stop(context)
+ * TermuxBackgroundService.runCommand(context, "job-1", "python3 long_script.py")
  * ```
  */
 class TermuxBackgroundService : Service() {
@@ -124,7 +122,6 @@ class TermuxBackgroundService : Service() {
                 job.status = JobStatus.FAILED
                 TermuxLogger.e("Background job '$jobId' failed", e)
             } finally {
-                // Remove from running list after delay
                 delay(5_000)
                 _runningJobs.value = _runningJobs.value.filterNot { it.id == jobId }
                 updateNotification()

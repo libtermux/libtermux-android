@@ -1,16 +1,16 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- * * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * * http://www.apache.org/licenses/LICENSE-2.0
- * * Unless required by applicable law or agreed to in writing, software
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * * Author: cybernahid-dev (Systems Developer)
+ * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
 package com.libtermux.executor
@@ -32,7 +32,7 @@ data class Session(
 
 /**
  * Manages multiple named terminal sessions.
- * Each session has its own Process and I/O streams.
+ * Each session has its own command context and I/O stream collection.
  */
 class SessionManager(
     private val executor: CommandExecutor,
@@ -43,7 +43,7 @@ class SessionManager(
     private val _sessionEvents = MutableSharedFlow<SessionEvent>(extraBufferCapacity = 64)
     val sessionEvents: SharedFlow<SessionEvent> = _sessionEvents.asSharedFlow()
 
-    /** Create and start a new interactive bash session */
+    /** Create and start a new interactive session */
     suspend fun createSession(name: String = "session-${sessions.size + 1}"): SessionHandle {
         val session = Session(name = name)
         val handle  = SessionHandle(session, scope, executor, _sessionEvents)
@@ -54,7 +54,6 @@ class SessionManager(
     }
 
     fun getSession(id: String): SessionHandle? = sessions[id]
-
     fun getAllSessions(): List<SessionHandle> = sessions.values.toList()
 
     fun closeSession(id: String) {
@@ -84,7 +83,7 @@ class SessionHandle(
         session.isAlive = true
     }
 
-    /** Run a command in this session */
+    /** Run a command in this session and collect output */
     fun run(command: String): Job = scope.launch {
         executor.executeStreaming(command).collect { line ->
             _output.emit(line)

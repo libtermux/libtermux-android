@@ -1,19 +1,15 @@
 /**
  * LibTermux-Android
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  * Author: cybernahid-dev (Systems Developer)
  * Project: https://github.com/AeonCoreX-Lab/libtermux-android
  */
@@ -28,16 +24,10 @@ internal object ArchUtils {
      * Detect device architecture safely.
      *
      * Uses null-safe access on [Build.SUPPORTED_ABIS] so this works correctly
-     * in both production and unit-test environments (where the field may be null
-     * or an empty array depending on the Robolectric/mockk setup).
-     *
-     * Defaults to [Architecture.ARM64] when detection fails — the most common
-     * modern Android architecture.
+     * in both production and unit-test environments.
+     * Defaults to [Architecture.ARM64] when detection fails.
      */
     fun detect(): Architecture {
-        // Build.SUPPORTED_ABIS is @NonNull in the SDK but CAN be null at runtime
-        // in JVM-only unit tests (non-Robolectric) because the field is backed by
-        // native code. Using ?. + orEmpty() makes this safe in all environments.
         val primaryAbi = runCatching { Build.SUPPORTED_ABIS }
             .getOrNull()
             ?.firstOrNull()
@@ -48,7 +38,7 @@ internal object ArchUtils {
             "x86_64"      -> Architecture.X86_64
             "armeabi-v7a" -> Architecture.ARM
             "x86"         -> Architecture.X86
-            else          -> Architecture.ARM64   // safe default
+            else          -> Architecture.ARM64
         }
     }
 
