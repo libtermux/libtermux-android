@@ -17,6 +17,8 @@ package com.libtermux.executor
 
 import com.libtermux.TermuxConfig
 import com.libtermux.fs.VirtualFileSystem
+import com.libtermux.utils.FileUtils.chmodExecutable
+import com.libtermux.utils.FileUtils.makeExecutable
 import com.libtermux.utils.NativeUtils
 import com.libtermux.utils.TermuxLogger
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.BufferedReader
 import java.io.File
+import java.io.IOException
 import java.io.InputStreamReader
 
 /**
@@ -60,11 +63,11 @@ class CommandExecutor(
         val result = withTimeoutOrNull(config.maxCommandTimeoutMs) {
             runProcess(command, workDir, extraEnv, shell)
         } ?: ExecutionResult(
-            stdout         = "",
-            stderr         = "Command timed out after ${config.maxCommandTimeoutMs}ms",
-            exitCode       = -1,
-            executionTimeMs= config.maxCommandTimeoutMs,
-            command        = command,
+            stdout          = "",
+            stderr          = "Command timed out after ${config.maxCommandTimeoutMs}ms",
+            exitCode        = -1,
+            executionTimeMs = config.maxCommandTimeoutMs,
+            command         = command,
         )
 
         TermuxLogger.d("exit=${result.exitCode} time=${result.executionTimeMs}ms")
@@ -192,6 +195,23 @@ class CommandExecutor(
         )
     }
 
+    /**
+     * Build and start a [Process] for the given shell command.
+     *
+     * FIX: Added EACCES (error=13 / Permission denied) recovery.
+     * If ProcessBuilder throws IOException with error=13 it means the shell
+     * binary is not executable — either bootstrap was installed by an older
+     * build that didn't set permissions correctly, or makeExecutable() was
+     * skipped because bootstrap was already marked as installed.
+     *
+     * Recovery strategy (one-shot, no infinite retry):
+     *   1. chmodExecutable(shellBin)  — fix the specific binary via Os.chmod()
+     *   2. makeExecutable(binDir)     — fix all binaries in PREFIX/bin
+     *   3. Retry ProcessBuilder once
+     *
+     * This makes the executor self-healing: even if the installation step
+     * didn't set permissions correctly, the first command call fixes it.
+     */
     private fun buildProcess(
         command: String,
         workDir: File?,
@@ -203,7 +223,37 @@ class CommandExecutor(
         }
         val env = vfs.buildEnv(extraEnv)
 
-        return ProcessBuilder(shellBin, "-c", command)
+        return try {
+            startProcess(shellBin, command, workDir, env)
+        } catch (e: IOException) {
+            if (e.isPermissionDenied()) {
+                TermuxLogger.w(
+                    "Permission denied launching $shellBin — " +
+                    "auto-fixing execute permissions and retrying once"
+                )
+                // Fix the shell binary specifically, then the entire bin dir
+                chmodExecutable(File(shellBin))
+                makeExecutable(vfs.binDir)
+                // One retry — if it fails again, propagate the original exception
+                try {
+                    startProcess(shellBin, command, workDir, env)
+                } catch (retryEx: IOException) {
+                    TermuxLogger.e("Retry also failed for $shellBin", retryEx)
+                    throw retryEx
+                }
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private fun startProcess(
+        shellBin: String,
+        command: String,
+        workDir: File?,
+        env: Map<String, String>,
+    ): Process =
+        ProcessBuilder(shellBin, "-c", command)
             .directory(workDir ?: vfs.homeDir)
             .also { pb ->
                 pb.environment().clear()
@@ -211,5 +261,12 @@ class CommandExecutor(
             }
             .redirectErrorStream(false)
             .start()
-    }
+
+    /**
+     * Returns true if this IOException is an EACCES / Permission denied error.
+     * Java wraps the OS errno as "error=13" in the exception message.
+     */
+    private fun IOException.isPermissionDenied(): Boolean =
+        message?.contains("error=13") == true ||
+        message?.contains("Permission denied") == true
 }

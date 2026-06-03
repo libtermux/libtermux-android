@@ -15,6 +15,8 @@
  */
 package com.libtermux.utils
 
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -24,14 +26,33 @@ import java.util.zip.ZipInputStream
 internal object FileUtils {
 
     /**
+     * 0755 permission bits: rwxr-xr-x
+     * Owner: read+write+execute | Group: read+execute | Others: read+execute
+     */
+    private val MODE_755 =
+        OsConstants.S_IRWXU or          // 0700 — owner rwx
+        OsConstants.S_IRGRP or          // 0040 — group r
+        OsConstants.S_IXGRP or          // 0010 — group x
+        OsConstants.S_IROTH or          // 0004 — others r
+        OsConstants.S_IXOTH             // 0001 — others x
+
+    /**
+     * Apply 0755 to a single file via Os.chmod() (direct POSIX syscall).
+     * Follows symlinks — chmodds the symlink target.
+     * Unlike Runtime.exec("chmod"), this never deadlocks and needs no PATH.
+     */
+    fun chmodExecutable(file: File) {
+        runCatching { Os.chmod(file.absolutePath, MODE_755) }
+    }
+
+    /**
      * Extract a zip stream to a destination directory.
      * Guards against zip-slip attacks by canonicalizing paths.
      *
-     * Note: java.util.zip.ZipEntry does NOT expose Unix externalAttributes,
-     * so per-entry permission restoration is not possible here. Instead,
-     * setExecutable() is applied to every extracted file as a baseline.
-     * The real permission fix (handling symlinks etc.) is done by
-     * makeExecutable() via `chmod -R 755` after the full extraction.
+     * FIX 1 (previous): suspend fun + suspend onProgress so emit() works in flow {}.
+     * FIX 2 (this PR):  Os.chmod(MODE_755) applied to every extracted file immediately,
+     *   so binaries are executable before makeExecutable() runs. Using Os.chmod()
+     *   (direct syscall) instead of File.setExecutable() which silently fails on symlinks.
      */
     suspend fun extractZip(
         zipStream: InputStream,
@@ -62,9 +83,9 @@ internal object FileUtils {
                 } else {
                     outFile.parentFile?.mkdirs()
                     outFile.outputStream().use { out -> zis.copyTo(out) }
-                    // Baseline executable bit — makeExecutable() does the real
-                    // chmod -R 755 pass afterward that also covers symlinks.
-                    outFile.setExecutable(true, false)
+                    // Set 0755 immediately after writing — direct POSIX syscall,
+                    // no PATH dependency, no deadlock risk.
+                    chmodExecutable(outFile)
 
                     val entrySize = if (entry.size > 0) entry.size
                                     else entry.compressedSize.coerceAtLeast(0)
@@ -79,7 +100,6 @@ internal object FileUtils {
 
     /**
      * Process Termux SYMLINKS.txt and create symlinks.
-     * Supports multiple delimiter styles used across different bootstrap versions.
      */
     fun processSymlinks(symlinksFile: File, baseDir: File) {
         if (!symlinksFile.exists()) {
@@ -120,11 +140,11 @@ internal object FileUtils {
             linkPath.parentFile?.mkdirs()
             runCatching { linkPath.delete() }
 
-            val exitCode = runCatching {
-                Runtime.getRuntime().exec(
-                    arrayOf("ln", "-sf", target, linkPath.absolutePath)
-                ).waitFor()
-            }.getOrDefault(-1)
+            val proc = Runtime.getRuntime()
+                .exec(arrayOf("ln", "-sf", target, linkPath.absolutePath))
+            proc.inputStream.readBytes()  // drain — prevent buffer deadlock
+            proc.errorStream.readBytes()
+            val exitCode = runCatching { proc.waitFor() }.getOrDefault(-1)
 
             if (exitCode == 0) {
                 processed++
@@ -138,25 +158,22 @@ internal object FileUtils {
     }
 
     /**
-     * Set executable permission recursively on all files under [dir].
+     * Set 0755 (rwxr-xr-x) recursively on every file under [dir].
      *
-     * Uses `chmod -R 755` via the system binary as the primary strategy —
-     * this correctly handles symlinks (File.setExecutable() does not).
-     * Falls back to File.setExecutable() only if chmod binary fails.
+     * FIX: Previous approach used Runtime.exec("chmod -R 755") which:
+     *   (a) Deadlocks if chmod writes to stderr and streams aren't drained.
+     *   (b) PATH may not resolve "chmod" in a Java Runtime.exec() context.
+     *   (c) File.setExecutable() silently fails on symlinks.
+     *
+     * New approach: Os.chmod() is a direct POSIX chmod(2) syscall — no
+     * subprocess, no PATH, no deadlock risk. It follows symlinks (chmodds
+     * the target), so busybox and all its symlinked applets get 0755.
      */
     fun makeExecutable(dir: File) {
-        val exitCode = runCatching {
-            Runtime.getRuntime()
-                .exec(arrayOf("chmod", "-R", "755", dir.absolutePath))
-                .waitFor()
-        }.getOrDefault(-1)
-
-        if (exitCode != 0) {
-            TermuxLogger.w("chmod -R 755 failed (exit=$exitCode), falling back to setExecutable")
-            dir.walkTopDown().forEach { file ->
-                if (file.isFile) file.setExecutable(true, false)
-            }
+        dir.walkTopDown().forEach { file ->
+            runCatching { Os.chmod(file.absolutePath, MODE_755) }
         }
+        TermuxLogger.d("makeExecutable: chmod 0755 applied to ${dir.absolutePath}")
     }
 
     /** Compute SHA-256 checksum of a file */
