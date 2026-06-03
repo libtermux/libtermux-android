@@ -54,8 +54,37 @@ data class TermuxConfig(
     companion object {
         const val LATEST_BOOTSTRAP = "LATEST"
 
+        private const val BASE_DOWNLOAD_URL =
+            "https://github.com/termux/termux-packages/releases/download"
+
+        // Used as a stable fallback tag when LATEST is requested without network access
+        // (e.g. unit tests, offline URL construction).
+        private const val LATEST_FALLBACK_TAG =
+            "bootstrap-2026.05.24-r1+apt.android-7"
+
         @JvmStatic fun default(): TermuxConfig = TermuxConfig()
         @JvmStatic fun builder(): Builder = Builder()
+
+        /**
+         * Constructs the GitHub release download URL for a bootstrap zip.
+         *
+         * - [arch]    target architecture (must be resolved — not AUTO)
+         * - [version] a specific version string OR [LATEST_BOOTSTRAP]
+         *
+         * When [version] is [LATEST_BOOTSTRAP] a recent fallback tag is used so
+         * this function remains pure / network-free (actual latest resolution
+         * happens inside BootstrapInstaller at install time).
+         */
+        @JvmStatic
+        fun bootstrapUrl(arch: Architecture, version: String): String {
+            val tag = when {
+                version == LATEST_BOOTSTRAP  -> LATEST_FALLBACK_TAG
+                version.contains("apt")      -> "bootstrap-$version"
+                else                         -> "bootstrap-$version+apt.android-7"
+            }
+            val encodedTag = tag.replace("+", "%2B")
+            return "$BASE_DOWNLOAD_URL/$encodedTag/bootstrap-${arch.termuxName}.zip"
+        }
     }
 
     class Builder {
@@ -94,15 +123,15 @@ class TermuxConfigDsl {
     fun env(key: String, value: String) { envVars[key] = value }
 
     internal fun build() = TermuxConfig(
-        architecture              = architecture,
-        autoInstall               = autoInstall,
-        bootstrapVersion          = bootstrapVersion,
-        logLevel                  = logLevel,
-        maxCommandTimeoutMs       = maxCommandTimeoutMs,
-        environmentVariables      = envVars.toMap(),
-        customBootstrapUrl        = customBootstrapUrl,
-        enablePackageManager      = enablePackageManager,
-        backgroundExecutionEnabled= backgroundExecutionEnabled,
+        architecture               = architecture,
+        autoInstall                = autoInstall,
+        bootstrapVersion           = bootstrapVersion,
+        logLevel                   = logLevel,
+        maxCommandTimeoutMs        = maxCommandTimeoutMs,
+        environmentVariables       = envVars.toMap(),
+        customBootstrapUrl         = customBootstrapUrl,
+        enablePackageManager       = enablePackageManager,
+        backgroundExecutionEnabled = backgroundExecutionEnabled,
     )
 }
 
