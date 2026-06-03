@@ -15,8 +15,6 @@
  */
 package com.libtermux.utils
 
-import android.system.ErrnoException
-import android.system.Os
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -29,14 +27,11 @@ internal object FileUtils {
      * Extract a zip stream to a destination directory.
      * Guards against zip-slip attacks by canonicalizing paths.
      *
-     * FIX 1: Changed to `suspend fun` so the `onProgress` callback can be a
-     *   suspending lambda, allowing `emit()` inside a `flow {}` block.
-     *
-     * FIX 2: After extracting each file, Unix permissions stored in the zip
-     *   entry's externalAttributes (upper 16 bits) are now applied via
-     *   Os.chmod(). Without this, every extracted file lands as 0644
-     *   (not executable), causing "error=13, Permission denied" when
-     *   ProcessBuilder tries to exec bash or any other binary.
+     * Note: java.util.zip.ZipEntry does NOT expose Unix externalAttributes,
+     * so per-entry permission restoration is not possible here. Instead,
+     * setExecutable() is applied to every extracted file as a baseline.
+     * The real permission fix (handling symlinks etc.) is done by
+     * makeExecutable() via `chmod -R 755` after the full extraction.
      */
     suspend fun extractZip(
         zipStream: InputStream,
@@ -67,19 +62,9 @@ internal object FileUtils {
                 } else {
                     outFile.parentFile?.mkdirs()
                     outFile.outputStream().use { out -> zis.copyTo(out) }
-
-                    // Apply Unix permissions from zip entry externalAttributes.
-                    // Upper 16 bits = Unix file mode (e.g. 0o100755 for executable).
-                    // Lower 12 bits are the actual permission/sticky/setuid bits.
-                    // Without this every file is left at default 0644 — not executable.
-                    val unixMode = (entry.externalAttributes shr 16).toInt() and 0xFFF
-                    if (unixMode != 0) {
-                        applyChmod(outFile, unixMode)
-                    } else {
-                        // No Unix attrs in zip (e.g. zip created on Windows) —
-                        // mark as executable so binaries can still run.
-                        outFile.setExecutable(true, false)
-                    }
+                    // Baseline executable bit — makeExecutable() does the real
+                    // chmod -R 755 pass afterward that also covers symlinks.
+                    outFile.setExecutable(true, false)
 
                     val entrySize = if (entry.size > 0) entry.size
                                     else entry.compressedSize.coerceAtLeast(0)
@@ -88,24 +73,6 @@ internal object FileUtils {
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
-            }
-        }
-    }
-
-    /**
-     * Apply Unix permission bits to [file].
-     * Primary: Os.chmod() (available API 21+, handles symlinks correctly).
-     * Fallback: /system/bin/chmod binary via Runtime.exec().
-     */
-    private fun applyChmod(file: File, mode: Int) {
-        try {
-            Os.chmod(file.absolutePath, mode)
-        } catch (e: ErrnoException) {
-            TermuxLogger.w("Os.chmod failed for ${file.name} (${e.message}), trying chmod binary")
-            runCatching {
-                Runtime.getRuntime()
-                    .exec(arrayOf("chmod", Integer.toOctalString(mode), file.absolutePath))
-                    .waitFor()
             }
         }
     }
@@ -173,13 +140,11 @@ internal object FileUtils {
     /**
      * Set executable permission recursively on all files under [dir].
      *
-     * FIX: Previously used File.setExecutable() which silently fails on
-     *   symlinks (Termux bootstrap has hundreds of symlinks to busybox).
-     *   Now uses `chmod -R 755` via the system chmod binary as the primary
-     *   strategy, with File.setExecutable() as fallback only.
+     * Uses `chmod -R 755` via the system binary as the primary strategy —
+     * this correctly handles symlinks (File.setExecutable() does not).
+     * Falls back to File.setExecutable() only if chmod binary fails.
      */
     fun makeExecutable(dir: File) {
-        // chmod -R 755 handles symlinks and is reliable on all Android versions
         val exitCode = runCatching {
             Runtime.getRuntime()
                 .exec(arrayOf("chmod", "-R", "755", dir.absolutePath))
@@ -187,7 +152,6 @@ internal object FileUtils {
         }.getOrDefault(-1)
 
         if (exitCode != 0) {
-            // Fallback: Java API (won't fix symlinks but better than nothing)
             TermuxLogger.w("chmod -R 755 failed (exit=$exitCode), falling back to setExecutable")
             dir.walkTopDown().forEach { file ->
                 if (file.isFile) file.setExecutable(true, false)
