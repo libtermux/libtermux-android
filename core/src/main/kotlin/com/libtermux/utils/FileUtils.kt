@@ -15,6 +15,8 @@
  */
 package com.libtermux.utils
 
+import android.system.ErrnoException
+import android.system.Os
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -27,15 +29,18 @@ internal object FileUtils {
      * Extract a zip stream to a destination directory.
      * Guards against zip-slip attacks by canonicalizing paths.
      *
-     * FIX: Changed to `suspend fun` so that the `onProgress` callback can be a
-     * suspending lambda — allowing callers inside a `flow {}` block to call
-     * `emit()` directly from the progress callback without a coroutine-scope
-     * violation ("Suspension functions can be called only within coroutine body").
+     * FIX 1: Changed to `suspend fun` so the `onProgress` callback can be a
+     *   suspending lambda, allowing `emit()` inside a `flow {}` block.
+     *
+     * FIX 2: After extracting each file, Unix permissions stored in the zip
+     *   entry's externalAttributes (upper 16 bits) are now applied via
+     *   Os.chmod(). Without this, every extracted file lands as 0644
+     *   (not executable), causing "error=13, Permission denied" when
+     *   ProcessBuilder tries to exec bash or any other binary.
      */
     suspend fun extractZip(
         zipStream: InputStream,
         destDir: File,
-        // FIX: was `((Float) -> Unit)?` — non-suspending lambda cannot call emit()
         onProgress: (suspend (Float) -> Unit)? = null,
         totalBytes: Long = -1L,
     ) {
@@ -47,7 +52,7 @@ internal object FileUtils {
             while (entry != null) {
                 val outFile = File(destDir, entry.name).canonicalFile
 
-                // Zip-slip protection: ensure extracted file stays inside destDir
+                // Zip-slip protection
                 if (!outFile.path.startsWith(canonicalDest.path + File.separator) &&
                     outFile.path != canonicalDest.path
                 ) {
@@ -62,12 +67,45 @@ internal object FileUtils {
                 } else {
                     outFile.parentFile?.mkdirs()
                     outFile.outputStream().use { out -> zis.copyTo(out) }
-                    val entrySize = if (entry.size > 0) entry.size else entry.compressedSize.coerceAtLeast(0)
+
+                    // Apply Unix permissions from zip entry externalAttributes.
+                    // Upper 16 bits = Unix file mode (e.g. 0o100755 for executable).
+                    // Lower 12 bits are the actual permission/sticky/setuid bits.
+                    // Without this every file is left at default 0644 — not executable.
+                    val unixMode = (entry.externalAttributes shr 16).toInt() and 0xFFF
+                    if (unixMode != 0) {
+                        applyChmod(outFile, unixMode)
+                    } else {
+                        // No Unix attrs in zip (e.g. zip created on Windows) —
+                        // mark as executable so binaries can still run.
+                        outFile.setExecutable(true, false)
+                    }
+
+                    val entrySize = if (entry.size > 0) entry.size
+                                    else entry.compressedSize.coerceAtLeast(0)
                     extracted += entrySize
                     if (totalBytes > 0) onProgress?.invoke(extracted.toFloat() / totalBytes)
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
+            }
+        }
+    }
+
+    /**
+     * Apply Unix permission bits to [file].
+     * Primary: Os.chmod() (available API 21+, handles symlinks correctly).
+     * Fallback: /system/bin/chmod binary via Runtime.exec().
+     */
+    private fun applyChmod(file: File, mode: Int) {
+        try {
+            Os.chmod(file.absolutePath, mode)
+        } catch (e: ErrnoException) {
+            TermuxLogger.w("Os.chmod failed for ${file.name} (${e.message}), trying chmod binary")
+            runCatching {
+                Runtime.getRuntime()
+                    .exec(arrayOf("chmod", Integer.toOctalString(mode), file.absolutePath))
+                    .waitFor()
             }
         }
     }
@@ -88,23 +126,18 @@ internal object FileUtils {
         symlinksFile.forEachLine { line ->
             if (line.isBlank() || line.startsWith("#")) return@forEachLine
 
-            // Try multiple formats:
-            // 1. target<--link   (original Termux format with unicode left arrow U+2190)
-            // 2. link-->target   (unicode right arrow U+2192)
-            // 3. link target     (space/tab-separated, two columns)
             val parts = when {
-                line.contains("←") -> { // unicode left arrow
+                line.contains("←") -> {
                     val split = line.split("←").map { it.trim() }
                     if (split.size == 2) split else null
                 }
-                line.contains("→") -> { // unicode right arrow
+                line.contains("→") -> {
                     val split = line.split("→").map { it.trim() }
-                    if (split.size == 2) listOf(split[1], split[0]) else null // reverse to target,link
+                    if (split.size == 2) listOf(split[1], split[0]) else null
                 }
                 else -> {
-                    // Use explicit space/tab pattern instead of \s
                     val split = line.trim().split(Regex("[ \t]+"))
-                    if (split.size >= 2) listOf(split[1], split[0]) else null // target,link
+                    if (split.size >= 2) listOf(split[1], split[0]) else null
                 }
             }
 
@@ -114,7 +147,7 @@ internal object FileUtils {
                 return@forEachLine
             }
 
-            val target = parts[0]
+            val target   = parts[0]
             val linkPath = File(baseDir, parts[1])
 
             linkPath.parentFile?.mkdirs()
@@ -137,10 +170,28 @@ internal object FileUtils {
         TermuxLogger.i("Symlinks processed: $processed OK, $failed failed")
     }
 
-    /** Set executable permission recursively on all files under a directory */
+    /**
+     * Set executable permission recursively on all files under [dir].
+     *
+     * FIX: Previously used File.setExecutable() which silently fails on
+     *   symlinks (Termux bootstrap has hundreds of symlinks to busybox).
+     *   Now uses `chmod -R 755` via the system chmod binary as the primary
+     *   strategy, with File.setExecutable() as fallback only.
+     */
     fun makeExecutable(dir: File) {
-        dir.walkTopDown().forEach { file ->
-            if (file.isFile) file.setExecutable(true, false)
+        // chmod -R 755 handles symlinks and is reliable on all Android versions
+        val exitCode = runCatching {
+            Runtime.getRuntime()
+                .exec(arrayOf("chmod", "-R", "755", dir.absolutePath))
+                .waitFor()
+        }.getOrDefault(-1)
+
+        if (exitCode != 0) {
+            // Fallback: Java API (won't fix symlinks but better than nothing)
+            TermuxLogger.w("chmod -R 755 failed (exit=$exitCode), falling back to setExecutable")
+            dir.walkTopDown().forEach { file ->
+                if (file.isFile) file.setExecutable(true, false)
+            }
         }
     }
 
