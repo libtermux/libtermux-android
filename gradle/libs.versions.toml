@@ -18,37 +18,64 @@ shizuku              = "13.1.5"
 constraintlayout     = "2.1.4"
 activity             = "1.9.3"
 
+# ── OS Module additions ──────────────────────────────────────────────────────
+# Compose Compiler 1.5.12 is compatible with Kotlin 1.9.23
+composeCompiler      = "1.5.12"
+composeBom           = "2024.05.00"
+activityCompose      = "1.9.3"
+datastorePreferences = "1.1.1"
+
 [libraries]
-androidx-core-ktx            = { group = "androidx.core",          name = "core-ktx",              version.ref = "coreKtx"     }
-androidx-appcompat           = { group = "androidx.appcompat",     name = "appcompat",              version.ref = "appcompat"   }
-androidx-material            = { group = "com.google.android.material", name = "material",          version.ref = "material"    }
-androidx-lifecycle-runtime   = { group = "androidx.lifecycle",     name = "lifecycle-runtime-ktx",  version.ref = "lifecycle"   }
-androidx-work-runtime        = { group = "androidx.work",          name = "work-runtime-ktx",       version.ref = "workManager" }
-androidx-constraintlayout    = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
-androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
-androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
-androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activity" }
+# ── AndroidX ─────────────────────────────────────────────────────────────────
+androidx-core-ktx              = { group = "androidx.core",          name = "core-ktx",              version.ref = "coreKtx"      }
+androidx-appcompat             = { group = "androidx.appcompat",     name = "appcompat",              version.ref = "appcompat"    }
+androidx-material              = { group = "com.google.android.material", name = "material",          version.ref = "material"     }
+androidx-lifecycle-runtime     = { group = "androidx.lifecycle",     name = "lifecycle-runtime-ktx",  version.ref = "lifecycle"    }
+androidx-work-runtime          = { group = "androidx.work",          name = "work-runtime-ktx",       version.ref = "workManager"  }
+androidx-constraintlayout      = { module = "androidx.constraintlayout:constraintlayout",             version.ref = "constraintlayout" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx",              version.ref = "lifecycle"    }
+androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx",          version.ref = "lifecycle"    }
+androidx-activity-ktx          = { module = "androidx.activity:activity-ktx",                        version.ref = "activity"     }
 
+# ── Compose (OS module only) ─────────────────────────────────────────────────
+androidx-compose-bom                     = { module = "androidx.compose:compose-bom",                version.ref = "composeBom"        }
+androidx-compose-ui                      = { module = "androidx.compose.ui:ui"                                                         }
+androidx-compose-ui-tooling              = { module = "androidx.compose.ui:ui-tooling"                                                  }
+androidx-compose-ui-tooling-preview      = { module = "androidx.compose.ui:ui-tooling-preview"                                         }
+androidx-compose-ui-test-junit4          = { module = "androidx.compose.ui:ui-test-junit4"                                             }
+androidx-compose-ui-test-manifest        = { module = "androidx.compose.ui:ui-test-manifest"                                           }
+androidx-compose-material3               = { module = "androidx.compose.material3:material3"                                           }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended"                              }
+androidx-compose-foundation              = { module = "androidx.compose.foundation:foundation"                                         }
+androidx-activity-compose                = { module = "androidx.activity:activity-compose",           version.ref = "activityCompose"   }
 
+# ── DataStore (OS module — distro settings persistence) ──────────────────────
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences",              version.ref = "datastorePreferences" }
 
-kotlinx-coroutines-core      = { group = "org.jetbrains.kotlinx",  name = "kotlinx-coroutines-core",    version.ref = "coroutines"  }
-kotlinx-coroutines-android   = { group = "org.jetbrains.kotlinx",  name = "kotlinx-coroutines-android", version.ref = "coroutines"  }
-kotlinx-coroutines-test      = { group = "org.jetbrains.kotlinx",  name = "kotlinx-coroutines-test",    version.ref = "coroutines"  }
-kotlinx-serialization-json   = { group = "org.jetbrains.kotlinx",  name = "kotlinx-serialization-json", version.ref = "serialization" }
-okhttp                       = { group = "com.squareup.okhttp3",   name = "okhttp",                     version.ref = "okhttp"      }
-okhttp-logging               = { group = "com.squareup.okhttp3",   name = "logging-interceptor",        version.ref = "okhttp"      }
-junit                        = { group = "junit",                  name = "junit",                      version.ref = "junit"       }
-mockk                        = { group = "io.mockk",               name = "mockk",                      version.ref = "mockk"       }
-robolectric                  = { group = "org.robolectric",        name = "robolectric",                version.ref = "robolectric" }
-shizuku-api                  = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
-shizuku-provider             = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
-material                     = { module = "com.google.android.material:material", version.ref = "material" }
+# ── Kotlin ───────────────────────────────────────────────────────────────────
+kotlinx-coroutines-core    = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core",    version.ref = "coroutines"   }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines"   }
+kotlinx-coroutines-test    = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test",    version.ref = "coroutines"   }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 
+# ── Network ──────────────────────────────────────────────────────────────────
+okhttp         = { group = "com.squareup.okhttp3", name = "okhttp",               version.ref = "okhttp" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",  version.ref = "okhttp" }
+
+# ── Test ─────────────────────────────────────────────────────────────────────
+junit        = { group = "junit",            name = "junit",       version.ref = "junit"       }
+mockk        = { group = "io.mockk",         name = "mockk",       version.ref = "mockk"       }
+robolectric  = { group = "org.robolectric",  name = "robolectric", version.ref = "robolectric" }
+
+# ── Optional modules ─────────────────────────────────────────────────────────
+shizuku-api      = { module = "dev.rikka.shizuku:api",      version.ref = "shizuku" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+material         = { module = "com.google.android.material:material", version.ref = "material" }
 
 [plugins]
-android-application  = { id = "com.android.application",             version.ref = "agp"          }
-android-library      = { id = "com.android.library",                 version.ref = "agp"          }
-kotlin-android       = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin"       }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-dokka                = { id = "org.jetbrains.dokka",                 version.ref = "dokka"        }
-maven-publish        = { id = "com.vanniktech.maven.publish",        version.ref = "mavenPublish" }
+android-application  = { id = "com.android.application",                         version.ref = "agp"          }
+android-library      = { id = "com.android.library",                             version.ref = "agp"          }
+kotlin-android       = { id = "org.jetbrains.kotlin.android",                    version.ref = "kotlin"       }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization",       version.ref = "kotlin"       }
+dokka                = { id = "org.jetbrains.dokka",                             version.ref = "dokka"        }
+maven-publish        = { id = "com.vanniktech.maven.publish",                    version.ref = "mavenPublish" }

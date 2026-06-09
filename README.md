@@ -235,6 +235,407 @@ val content = termux.bridge.readFile("output.txt")
 
 ---
 
+## 🐧 OS Module — Embedded Linux Distros
+
+The OS module lets you embed a full Linux distribution (Kali, Ubuntu, Debian, Alpine, Fedora) directly inside your Android app — no separate app, no root required. Users get a real `apt`/`apk`/`dnf` package manager, real binaries, and optionally a full graphical desktop rendered inside a Jetpack Compose view.
+
+---
+
+### How It Works
+
+```
+Your App (Jetpack Compose)
+    └── LibTermux
+            └── OsEnvironment
+                    ├── ProotRunner (no root)   ← userspace chroot via proot
+                    │       └── Kali rootfs / Ubuntu rootfs / ...
+                    └── ChrootRunner (root)     ← real kernel chroot via su
+                            └── Kali rootfs / Ubuntu rootfs / ...
+```
+
+**Without root** — [proot](https://proot-me.github.io/) intercepts syscalls in userspace and fakes a chroot. No root permission needed. Performance overhead ~15%.
+
+**With root** — real `chroot(2)` syscall. Native speed. Full `iptables`, raw sockets, and partial `systemd` support.
+
+Root detection is automatic (`ExecutionMode.AUTO`). You can override with `ExecutionMode.PROOT` or `ExecutionMode.REAL_CHROOT`.
+
+---
+
+### Supported Distros
+
+| Distro | ID | Rootfs Size | Package Manager | GUI Support |
+|--------|----|-------------|-----------------|-------------|
+| Kali Linux (rolling) | `kali` | ~400 MB | `apt` | ✅ XFCE4 |
+| Ubuntu 24.04 LTS | `ubuntu-24.04` | ~80 MB | `apt` | ✅ XFCE4 |
+| Ubuntu 22.04 LTS | `ubuntu-22.04` | ~75 MB | `apt` | ✅ XFCE4 |
+| Debian 12 Bookworm | `debian-12` | ~120 MB | `apt` | ✅ XFCE4 |
+| Alpine 3.19 | `alpine` | ~5 MB | `apk` | ✅ XFCE4 |
+| Fedora 40 | `fedora-40` | ~200 MB | `dnf` | ✅ XFCE4 |
+| Custom | any | — | any | configurable |
+
+All rootfs URLs point to **official ARM64 images** — no third-party mirrors.
+
+---
+
+### Installation
+
+#### `build.gradle.kts` (app module)
+
+```kotlin
+dependencies {
+    implementation("com.aeoncorex:libtermux-core:<version>")
+}
+```
+
+#### `libs.versions.toml`
+
+```toml
+[versions]
+libtermux = "<version>"
+
+[libraries]
+libtermux-core = { module = "com.aeoncorex:libtermux-core", version.ref = "libtermux" }
+```
+
+#### `AndroidManifest.xml`
+
+```xml
+<!-- Required: download rootfs archives -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<!-- Optional: keep VNC session alive in background -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+```
+
+---
+
+### Quick Start
+
+#### 1 — Declare supported distros
+
+Only declared distros are available in your app. This prevents accidental installation of unwanted rootfs archives.
+
+```kotlin
+// Application.onCreate() or wherever you init LibTermux
+val libtermux = LibTermux.init(applicationContext, termuxConfig {
+    autoInstall = true
+
+    os {
+        // Mode: AUTO detects root automatically
+        executionMode = ExecutionMode.AUTO
+
+        // Declare which distros your app supports
+        registry {
+            distro(Distro.Kali) {
+                guiEnabled         = true                        // show desktop in app
+                desktopEnvironment = DesktopEnvironment.XFCE4   // desktop to install
+                defaultResolution  = DisplayResolution.HD_720P  // 1280×720
+                description        = "Kali penetration testing suite"
+                extraPackages      = listOf("nmap", "metasploit-framework", "sqlmap")
+                startupCommands    = listOf("service postgresql start")
+            }
+
+            distro(Distro.Ubuntu2404) {
+                guiEnabled    = false                            // CLI only
+                description   = "Ubuntu development environment"
+                extraPackages = listOf("python3-pip", "nodejs", "git", "curl")
+            }
+
+            distro(Distro.Alpine) {
+                guiEnabled = false
+                description = "Minimal Alpine (fast download)"
+            }
+        }
+    }
+})
+```
+
+#### 2 — Install a distro
+
+```kotlin
+// In a ViewModel or Composable with LaunchedEffect
+libtermux.os.setupDistro(Distro.Kali).collect { state ->
+    when (state) {
+        is DistroSetupState.Checking          -> showStatus("Checking...")
+        is DistroSetupState.AlreadyInstalled  -> showStatus("Already ready")
+        is DistroSetupState.InstallingProot   -> showStatus("Installing proot...")
+        is DistroSetupState.Downloading       -> {
+            showProgress(state.progress)
+            showStatus("Downloading ${formatBytes(state.bytesDownloaded)} / ${formatBytes(state.totalBytes)}")
+        }
+        is DistroSetupState.VerifyingChecksum -> showStatus("Verifying...")
+        is DistroSetupState.Extracting        -> {
+            showProgress(state.progress)
+            showStatus("Extracting...")
+        }
+        is DistroSetupState.ConfiguringDistro -> showStatus("Configuring: ${state.step}")
+        is DistroSetupState.Completed         -> showStatus("Done!")
+        is DistroSetupState.Failed            -> showError(state.reason)
+        else -> {}
+    }
+}
+```
+
+#### 3 — Run CLI commands
+
+```kotlin
+// Single command
+val result = libtermux.os.execute(Distro.Kali, "nmap -sV 192.168.1.1")
+println(result.stdout)
+println("Exit: ${result.exitCode}")
+
+// With custom working directory
+val result2 = libtermux.os.execute(Distro.Ubuntu2404, "ls -la", workDir = "/etc")
+
+// Install packages
+libtermux.os.install(Distro.Kali, "hydra", "john")
+
+// Update package lists
+libtermux.os.update(Distro.Ubuntu2404)
+
+// Run Python
+libtermux.os.python(Distro.Ubuntu2404, """
+    import platform
+    print(f"Python {platform.python_version()} on {platform.system()}")
+""")
+
+// Check binary availability
+val hasNmap = libtermux.os.hasBinary(Distro.Kali, "nmap")
+
+// Interactive shell (attach to terminal view)
+val process = libtermux.os.login(Distro.Kali)
+```
+
+---
+
+### 🖥️ GUI Desktop (VNC)
+
+When `guiEnabled = true`, the OS module starts a VNC server (TigerVNC + XFCE4) inside the distro and renders it in a Jetpack Compose `Canvas` with full mouse and keyboard support.
+
+```
+Distro container
+    └── Xvnc :1 (port 5901) + XFCE4
+            ↑ RFB 3.8 protocol (localhost only)
+Android App
+    └── VncClient (pure Kotlin RFB implementation)
+            └── DistroDisplay (Compose Canvas)
+                    ├── Touch → mouse events
+                    ├── Long press → right click
+                    ├── Two-finger drag → scroll wheel
+                    ├── Pinch → zoom display
+                    └── Hardware/soft keyboard → X11 keysyms
+```
+
+#### Show desktop in your Compose UI
+
+```kotlin
+@Composable
+fun MyScreen(libtermux: LibTermux) {
+    val coroutineScope = rememberCoroutineScope()
+    var session by remember { mutableStateOf<DesktopSession?>(null) }
+
+    // Create and start the session
+    LaunchedEffect(Unit) {
+        val s = libtermux.os.createDesktopSession(Distro.Kali)
+        val settings = DistroRuntimeSettings(
+            distroId      = Distro.Kali.id,
+            displayWidth  = 1280,
+            displayHeight = 720,
+        )
+        s.start(settings)
+        session = s
+    }
+
+    session?.let { s ->
+        // Full-screen desktop
+        DistroDisplay(
+            session     = s,
+            modifier    = Modifier.fillMaxSize(),
+            showToolbar = true,
+            onClose     = { coroutineScope.launch { s.stop() } },
+        )
+    }
+}
+```
+
+#### Desktop toolbar controls
+
+The built-in toolbar (shown at top of `DistroDisplay`) provides:
+
+| Button | Action |
+|--------|--------|
+| `C+A+D` | Send Ctrl+Alt+Delete |
+| `⛶` | Toggle scale-to-fit / 1:1 pixel |
+| `✕` | Stop session and close |
+
+#### Touch controls
+
+| Gesture | Mouse action |
+|---------|-------------|
+| Single tap | Left click |
+| Long press | Right click |
+| Drag | Mouse move + left button held |
+| Two-finger drag up | Scroll wheel up |
+| Two-finger drag down | Scroll wheel down |
+| Pinch in/out | Zoom display (does not change desktop resolution) |
+
+---
+
+### 📋 Distro Launcher UI
+
+Drop the built-in launcher into any Compose screen to give users a distro management UI:
+
+```kotlin
+@Composable
+fun DistrosScreen(libtermux: LibTermux, navController: NavController) {
+    DistroLauncher(
+        os       = libtermux.os,
+        modifier = Modifier.fillMaxSize(),
+        onLaunch = { session ->
+            // Navigate to desktop screen with the active session
+            navController.navigate("desktop")
+        },
+        onOpenSettings = { distro ->
+            navController.navigate("distro-settings/${distro.id}")
+        },
+    )
+}
+```
+
+The launcher automatically shows only the distros registered in your `DistroRegistry`. Each card displays:
+- Install status badge (Not installed / Installing / Ready)
+- GUI and resolution capability chips
+- Real-time install progress with download percentage
+- Install / Launch Desktop / Settings / Uninstall actions
+
+---
+
+### ⚙️ Settings Screen
+
+```kotlin
+@Composable
+fun DistroSettingsRoute(distroId: String, libtermux: LibTermux) {
+    val distro          = Distro.fromId(distroId) ?: return
+    val supportedDistro = libtermux.os.registry[distro] ?: return
+
+    DistroSettingsScreen(
+        distro          = distro,
+        supportedDistro = supportedDistro,
+        onBack          = { /* navigate back */ },
+    )
+}
+```
+
+Settings are persisted via **DataStore Preferences** and survive app restarts.
+
+| Setting | Description |
+|---------|-------------|
+| Resolution | 720p / 1080p / 1200p / Custom |
+| Color depth | 16 / 24 / 32 bit |
+| Scale to fit | Stretch desktop to fill screen |
+| VNC Port | Default 5901 (display :1) |
+| VNC Password | Empty = no authentication |
+| Startup commands | Run on every session start |
+| Show toolbar | Toggle the overlay toolbar |
+| Vibrate on click | Haptic feedback on mouse click |
+
+---
+
+### Custom Distro
+
+```kotlin
+distro(Distro.Custom(
+    customId          = "my-distro",
+    customName        = "My Distro",
+    url               = "https://example.com/my-rootfs-arm64.tar.gz",
+    compressionType   = CompressionType.GZ,
+    shell             = "/bin/bash",
+)) {
+    guiEnabled         = true
+    desktopEnvironment = DesktopEnvironment.OPENBOX
+    defaultResolution  = DisplayResolution.FHD_1080P
+}
+```
+
+---
+
+### Root vs No-Root
+
+```kotlin
+// Check mode at runtime
+val isRooted     = libtermux.isRooted
+val mode         = libtermux.os.executionMode        // PROOT or REAL_CHROOT
+val usingChroot  = libtermux.os.isUsingRealChroot
+
+// Force a specific mode
+termuxConfig {
+    os {
+        executionMode = ExecutionMode.PROOT        // always use proot
+        // OR
+        executionMode = ExecutionMode.REAL_CHROOT  // require root
+    }
+}
+```
+
+| Feature | No Root (proot) | Root (chroot) |
+|---------|----------------|---------------|
+| Setup | ✅ No root needed | ✅ Needs `su` |
+| Performance | ✅ ~85% native | ✅ 100% native |
+| `apt install` | ✅ | ✅ |
+| Metasploit | ✅ | ✅ |
+| Raw sockets | ❌ | ✅ |
+| `iptables` | ❌ | ✅ |
+| WiFi injection | ❌ | ❌ (kernel driver needed) |
+| Systemd services | ❌ | ⚠️ partial |
+| Kernel modules | ❌ | ❌ |
+| GUI (VNC) | ✅ | ✅ |
+
+---
+
+### Known Limitations
+
+- **WiFi injection / monitor mode** — requires a custom Android kernel (e.g. NetHunter). Not possible via library alone.
+- **systemd** — Android kernel lacks full cgroup v2 support required by systemd. Use `service` or `openrc` instead.
+- **Kernel modules** — `modprobe`/`insmod` are not possible without matching kernel source.
+- **GPU acceleration** — Vulkan/OpenGL inside the container is not supported. CPU-only.
+- **Rootfs size** — Kali minimal is ~400 MB compressed, ~1.5 GB extracted. Ensure sufficient internal storage or set `distroStorageDir` to external storage.
+- **VNC encoding** — Current implementation supports Raw and CopyRect. ZRLE/ZLIB coming in a future release for better compression.
+
+---
+
+### Architecture Reference
+
+```
+com.libtermux.os/
+├── OsConfig.kt                ← configuration + ExecutionMode + OsConfigDsl
+├── OsEnvironment.kt           ← main public API
+├── RootUtils.kt               ← root detection + su execution
+├── distro/
+│   ├── Distro.kt              ← sealed class with official ARM64 URLs
+│   └── DistroSetupState.kt    ← Flow progress states
+├── registry/
+│   ├── SupportedDistro.kt     ← per-distro developer config + DSL builder
+│   └── DistroRegistry.kt      ← registry of declared distros
+├── settings/
+│   └── DistroSettings.kt      ← DataStore-backed runtime settings
+├── proot/
+│   └── ProotRunner.kt         ← proot engine (no root)
+├── chroot/
+│   ├── ChrootRunner.kt        ← real chroot engine (root)
+│   └── MountManager.kt        ← /proc /sys /dev bind mounts
+└── gui/
+    ├── DesktopSession.kt       ← VNC server lifecycle manager
+    ├── vnc/
+    │   ├── VncClient.kt        ← pure Kotlin RFB 3.8 protocol client
+    │   └── VncState.kt         ← connection states + KeySym + MouseButton
+    └── compose/
+        ├── DistroDisplay.kt         ← Canvas desktop rendering + input
+        ├── DistroLauncher.kt        ← distro picker + install UI
+        └── DistroSettingsScreen.kt  ← per-distro settings UI
+```
+---
+
 ## 🔐 Shizuku Integration (Elevated Privileges)
 
 libtermux-android optionally integrates with Shizuku to run commands with elevated (root/system) privileges.

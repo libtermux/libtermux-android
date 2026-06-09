@@ -21,10 +21,14 @@ dependencyResolutionManagement {
 
 rootProject.name = "libtermux-android"
 
-// Core SDK
+// Core SDK — bootstrap, executor, bridge, file system
 include(":core")
 
-// UI widget
+// OS Module — Linux distro management, proot/chroot, VNC GUI
+// Depends on :core. Add separately if your app needs distro support.
+include(":os")
+
+// Terminal UI widget
 include(":terminal-view")
 
 // Optional: Shizuku elevated execution module
