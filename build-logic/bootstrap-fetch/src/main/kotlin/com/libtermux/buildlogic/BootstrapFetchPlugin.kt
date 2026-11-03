@@ -103,39 +103,22 @@ class BootstrapFetchPlugin : Plugin<Project> {
             finalizedBy("fetchProotBinary")
         }
 
-        // AGP's *JniLibFolders merge tasks (mergeDebugJniLibFolders,
-        // mergeReleaseJniLibFolders, and one per build-type/flavor variant)
-        // read src/main/jniLibs as a source-set input, but Gradle only
-        // infers task dependencies from declared task *outputs* — a
-        // source-set directory isn't one, so there's no automatic edge to
-        // whatever writes into it. Under Gradle 9's stricter validation
-        // that surfaces as "Property has implicit dependency" on every
-        // variant's merge task.
+        // AGP's jniLibs merge tasks (mergeDebugJniLibFolders, copy*JniLibs*, ...)
+        // read src/main/jniLibs as a plain source-set input. Gradle infers task
+        // dependencies only from declared task OUTPUTS wired into inputs, so
+        // there is no automatic edge from our fetch tasks to those tasks, and
+        // Gradle 9 fails validation with "Property has implicit dependency".
         //
-        // `finalizedBy` above only orders our two fetch tasks relative to
-        // each other; it does nothing for AGP's tasks, which may still run
-        // concurrently with — or before — fetchBootstrapBinaries.
+        // `finalizedBy` above only orders the two fetch tasks relative to each
+        // other, so BOTH fetch tasks must be declared as explicit dependencies.
         //
-        // AGP creates its per-variant merge tasks lazily and doesn't expose
-        // their names up front, so `tasks.named(...)` can't target them
-        // directly at plugin-apply time. `tasks.whenTaskAdded` is the
-        // standard way around that (the same pattern used by e.g.
-        // mozilla/rust-android-gradle for this exact class of problem):
-        // it fires for every task as AGP registers it, letting us match by
-        // name and attach a real dependsOn edge to each variant as it
-        // appears.
-        project.tasks.whenTaskAdded {
-            if (name.endsWith("JniLibFolders")) {
-                dependsOn("fetchBootstrapBinaries")
-                // The finalizedBy declared above only orders fetchProotBinary
-                // *after* fetchBootstrapBinaries — it does not create a
-                // dependency edge, so Gradle's task-output validation still
-                // flags fetchProotBinary's write into the same jniLibs
-                // directory as undeclared. Depend on it explicitly too.
-                // as undeclared. Depend on it explicitly too.
-                dependsOn("fetchProotBinary")
-            }
-        }
+        // Hook with `matching { }.configureEach { }` (lazy-task-aware, matches on
+        // name without realizing tasks) instead of `whenTaskAdded` -- the same
+        // mechanism that already proved to work in libtermux.bootstrap-module.
+        val fetchTaskNames = listOf("fetchBootstrapBinaries", "fetchProotBinary")
+        project.tasks
+            .matching { it.name.contains("JniLib", ignoreCase = true) }
+            .configureEach { dependsOn(fetchTaskNames) }
     }
 }
 

@@ -51,26 +51,20 @@ configure<LibraryExtension> {
 //   ./gradlew :bootstrap-arm64:fetchBootstrapBinaries --stacktrace
 // and check src/main/jniLibs/arm64-v8a/ was populated directly, independent
 // of whatever task ends up consuming it.
-val fetchTaskName = "fetchBootstrapBinaries"
+// BOTH fetch tasks write into src/main/jniLibs/<abi>/ (fetchProotBinary is only
+// chained via finalizedBy, which orders but does NOT declare a dependency), so
+// every consumer hook below must depend on both -- otherwise Gradle 9 fails with
+// "Property has implicit dependency ... fetchProotBinary".
+val fetchTaskNames = listOf("fetchBootstrapBinaries", "fetchProotBinary")
 
 tasks.matching { it.name == "preBuild" }
-    .configureEach { dependsOn(fetchTaskName) }
+    .configureEach { dependsOn(fetchTaskNames) }
 
 tasks.matching { it.name.contains("JniLib", ignoreCase = true) }
-    .configureEach { dependsOn(fetchTaskName) }
+    .configureEach { dependsOn(fetchTaskNames) }
 
 tasks.matching { it.name.startsWith("bundle") && it.name.endsWith("Aar") }
-    .configureEach { dependsOn(fetchTaskName) }
+    .configureEach { dependsOn(fetchTaskNames) }
 
-// Belt-and-suspenders: also run it eagerly whenever this project is
-// configured at all, so `./gradlew :sample:assembleDebug` (which configures
-// :bootstrap-arm64 as a dependency but may not touch any of the task names
-// matched above) still has jniLibs populated before Gradle decides what
-// needs rebuilding.
-project.afterEvaluate {
-    tasks.findByName(fetchTaskName)?.let { fetchTask ->
-        tasks.matching { it != fetchTask && it.name != fetchTaskName }
-            .matching { it.name == "assemble" || it.name.startsWith("assemble") }
-            .configureEach { dependsOn(fetchTask) }
-    }
-}
+tasks.matching { it.name == "assemble" || it.name.startsWith("assemble") }
+    .configureEach { dependsOn(fetchTaskNames) }
