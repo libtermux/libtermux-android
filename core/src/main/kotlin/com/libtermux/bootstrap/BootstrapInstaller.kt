@@ -224,6 +224,8 @@ class BootstrapInstaller(
                 emit(InstallState.Downloading(1f, zipFile.length(), zipFile.length()))
             }
 
+            warnIfPrefixMismatch(zipFile)
+
             TermuxLogger.i("Extracting bootstrap to ${vfs.prefixDir}")
             if (forceReinstall) {
                 vfs.prefixDir.deleteRecursivelyQuiet()
@@ -289,6 +291,29 @@ class BootstrapInstaller(
             emit(InstallState.Failed(e.message ?: "Unknown error", e))
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Termux binaries have `/data/data/<package>/files/usr` compiled in. If the bootstrap was
+     * built for another package name, apt/dpkg/pkg will not find their config and state.
+     * Build a matching one with bootstrap-builder/ (see its README).
+     */
+    private fun warnIfPrefixMismatch(zipFile: File) {
+        runCatching {
+            java.util.zip.ZipFile(zipFile).use { zf ->
+                val entry = zf.getEntry("SYMLINKS.txt") ?: return
+                val text = zf.getInputStream(entry).bufferedReader().readText()
+                val builtFor = Regex("/data/data/([A-Za-z0-9_.]+)/files/usr")
+                    .find(text)?.groupValues?.get(1) ?: return
+                if (builtFor != context.packageName) {
+                    TermuxLogger.e(
+                        "Bootstrap was built for package '$builtFor' but this app is " +
+                            "'${context.packageName}': apt/dpkg/pkg will NOT work. " +
+                            "Build a matching bootstrap with bootstrap-builder/."
+                    )
+                }
+            }
+        }
+    }
 
     /** Copies assets/libtermux/bootstrap-<arch>.zip to [dest]; false if not bundled. */
     private fun copyEmbeddedBootstrap(termuxArch: String, dest: File): Boolean = try {

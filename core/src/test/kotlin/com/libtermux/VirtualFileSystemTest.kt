@@ -38,6 +38,7 @@ class VirtualFileSystemTest {
     fun setup() {
         context = mockk {
             every { filesDir } returns tmpFolder.root
+            every { packageName } returns "com.libtermux.test"
         }
         vfs = VirtualFileSystem(context, TermuxConfig.default())
     }

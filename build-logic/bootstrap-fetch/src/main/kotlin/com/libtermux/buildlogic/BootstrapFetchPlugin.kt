@@ -27,6 +27,9 @@ import java.util.zip.ZipFile
 /** Value of `bootstrapTag` that means "resolve the newest Termux bootstrap release at build time". */
 internal const val LATEST = "latest"
 
+/** Upstream repository the bootstrap zips are downloaded from by default. */
+internal const val DEFAULT_REPO = "termux/termux-packages"
+
 /** Pinned release used when `latest` cannot be resolved (offline, GitHub API rate limit, ...). */
 internal const val DEFAULT_FALLBACK_TAG = "bootstrap-2026.05.24-r1+apt.android-7"
 
@@ -51,6 +54,13 @@ internal const val DEFAULT_FALLBACK_TAG = "bootstrap-2026.05.24-r1+apt.android-7
  * is logged and also stored in the asset `libtermux/bootstrap-version.txt`.
  * Set a `GITHUB_TOKEN` env var in CI to avoid API rate limits.
  *
+ * ## Custom package name
+ * Upstream zips only work for the `com.termux` package name (prefix is compiled
+ * into the binaries). For any other app, build your own bootstrap with
+ * `bootstrap-builder/` (GitHub Actions) and point this plugin at that release
+ * repository: `bootstrapFetch { bootstrapRepo.set("owner/repo") }` or
+ * `-Plibtermux.bootstrapRepo=owner/repo`.
+ *
  * ## Why this fixes the Gradle 9 "implicit dependency" failure
  * The old design wrote files into `src/main/jniLibs` (a *source* directory that
  * AGP merely reads), so Gradle could not see the producer->consumer edge. Here
@@ -72,7 +82,13 @@ class BootstrapFetchPlugin : Plugin<Project> {
         ext.bootstrapTag.convention(
             project.providers.gradleProperty("libtermux.bootstrapTag").orElse(LATEST)
         )
-        ext.fallbackTag.convention(DEFAULT_FALLBACK_TAG)
+        ext.bootstrapRepo.convention(
+            project.providers.gradleProperty("libtermux.bootstrapRepo").orElse(DEFAULT_REPO)
+        )
+        // A pinned fallback only exists for the upstream repo; custom repos must set their own.
+        ext.fallbackTag.convention(
+            ext.bootstrapRepo.map { if (it == DEFAULT_REPO) DEFAULT_FALLBACK_TAG else "" }
+        )
 
         // withId makes this independent of plugin application order.
         project.plugins.withId("com.android.library") {
@@ -92,6 +108,7 @@ class BootstrapFetchPlugin : Plugin<Project> {
                         "asset (libtermux/bootstrap-<arch>.zip) for the $cap variant."
                     termuxArch.set(ext.termuxArch)
                     bootstrapTag.set(ext.bootstrapTag)
+                    bootstrapRepo.set(ext.bootstrapRepo)
                     fallbackTag.set(ext.fallbackTag)
                     gradleUserHomeDir.set(project.gradle.gradleUserHomeDir)
 
@@ -124,6 +141,13 @@ abstract class BootstrapFetchExtension {
      */
     abstract val bootstrapTag: Property<String>
 
+    /**
+     * GitHub `owner/repo` that hosts the bootstrap zips. Default `termux/termux-packages`
+     * (only valid for package name `com.termux`). Use the repo built by `bootstrap-builder/`
+     * for your own package name. Command line: `-Plibtermux.bootstrapRepo=owner/repo`.
+     */
+    abstract val bootstrapRepo: Property<String>
+
     /** Pinned tag used when "latest" cannot be resolved. Keep in sync with core's `TermuxConfig` fallback tag. */
     abstract val fallbackTag: Property<String>
 }
@@ -134,6 +158,7 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
     @get:Input abstract val termuxArch: Property<String>
     @get:Input abstract val bootstrapTag: Property<String>
     @get:Input abstract val fallbackTag: Property<String>
+    @get:Input abstract val bootstrapRepo: Property<String>
 
     /**
      * Gradle user home, captured at configuration time. Reading `project`
@@ -155,6 +180,9 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
         } catch (e: Exception) {
             if (requested != LATEST) throw e
             val fb = fallbackTag.get()
+            if (fb.isBlank()) throw GradleException(
+                "Could not resolve a bootstrap from ${bootstrapRepo.get()} and no fallbackTag is set: ${e.message}", e
+            )
             logger.warn("Could not fetch the latest Termux bootstrap (${e.message}); falling back to pinned $fb")
             fb to ensureZip(arch, fb)
         }
@@ -175,13 +203,13 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
     private fun ensureZip(arch: String, tag: String): File {
         val cacheFile = File(
             gradleUserHomeDir.get().asFile,
-            "libtermux-bootstrap-cache/${tag.replace('+', '_')}/bootstrap-$arch.zip",
+            "libtermux-bootstrap-cache/${bootstrapRepo.get().replace('/', '_')}/${tag.replace('+', '_')}/bootstrap-$arch.zip",
         )
         if (isValidBootstrap(cacheFile)) {
             logger.lifecycle("Using cached Termux bootstrap $tag: ${cacheFile.absolutePath}")
             return cacheFile
         }
-        val url = "https://github.com/termux/termux-packages/releases/download/" +
+        val url = "https://github.com/${bootstrapRepo.get()}/releases/download/" +
             "${tag.replace("+", "%2B")}/bootstrap-$arch.zip"
         logger.lifecycle("Downloading Termux bootstrap $tag for $arch: $url")
         download(url, cacheFile)
@@ -199,7 +227,7 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
         val fallback = fallbackTag.get()
         return try {
             val conn = URL(
-                "https://api.github.com/repos/termux/termux-packages/releases?per_page=50"
+                "https://api.github.com/repos/${bootstrapRepo.get()}/releases?per_page=50"
             ).openConnection() as HttpURLConnection
             conn.connectTimeout = 15_000
             conn.readTimeout = 15_000
@@ -226,6 +254,10 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
                 .maxByOrNull { versionScore(it) }
 
             if (latest == null) {
+                if (fallback.isBlank()) throw GradleException(
+                    "No bootstrap-*apt.android-7 release found in ${bootstrapRepo.get()}. " +
+                        "Run the 'Build custom bootstrap' workflow first."
+                )
                 logger.warn("No matching bootstrap release found via GitHub API; using pinned $fallback")
                 fallback
             } else {
@@ -233,6 +265,7 @@ abstract class FetchBootstrapZipTask : DefaultTask() {
                 latest
             }
         } catch (e: Exception) {
+            if (fallback.isBlank()) throw e
             logger.warn("GitHub API lookup failed (${e.message}); using pinned $fallback")
             fallback
         }

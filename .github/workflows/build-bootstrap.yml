@@ -1,0 +1,89 @@
+name: Build custom bootstrap
+
+# Builds the Termux bootstrap + apt repository for YOUR package name from source.
+# Takes hours. Result: GitHub Release (bootstrap-<arch>.zip) + apt repo on GitHub Pages.
+# Enable Settings -> Pages -> Source: "GitHub Actions" before the first run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_name:
+        description: "Android applicationId the bootstrap is built for"
+        default: "com.libtermux.sample"
+      architectures:
+        description: 'JSON list, e.g. ["aarch64"] or ["aarch64","arm","i686","x86_64"]'
+        default: '["aarch64"]'
+      extra_packages:
+        description: "Extra packages to build into the apt repo (space separated)"
+        default: "python"
+      termux_packages_ref:
+        description: "termux/termux-packages branch, tag or commit"
+        default: "master"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  REPO_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/apt
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON(inputs.architectures) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y jq zip unzip xz-utils dpkg-dev binutils apt-utils
+      - name: Build bootstrap
+        env:
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          ARCH: ${{ matrix.arch }}
+          EXTRA_PACKAGES: ${{ inputs.extra_packages }}
+          TERMUX_PACKAGES_REF: ${{ inputs.termux_packages_ref }}
+        run: ./bootstrap-builder/build-bootstrap.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y apt-utils
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+      - name: Merge apt repositories and write Release file
+        run: ./bootstrap-builder/build-bootstrap.sh release dist site/apt
+      - name: GitHub Release (tag format matches Termux so Gradle "latest" works)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="bootstrap-$(date +%Y.%m.%d)-r${{ github.run_number }}+apt.android-7"
+          gh release create "$TAG" dist/bootstrap-*.zip \
+            --title "Bootstrap for ${{ inputs.package_name }}" \
+            --notes "Built from termux-packages @ ${{ inputs.termux_packages_ref }} for package name ${{ inputs.package_name }}. apt repo: ${{ env.REPO_URL }}"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

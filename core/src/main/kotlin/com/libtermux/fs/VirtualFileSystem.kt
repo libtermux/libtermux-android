@@ -23,9 +23,9 @@ import java.io.File
 /**
  * Manages the virtual Linux directory structure inside the app's private storage.
  *
- * Layout mirrors Termux exactly:
- *   filesDir/libtermux/
- *     ├── usr/           ← PREFIX  ($PREFIX)
+ * Layout mirrors Termux exactly (TERMUX__ROOTFS = /data/data/<package>/files):
+ *   filesDir/
+ *     ├── usr/           ← PREFIX  ($PREFIX)  — MUST equal the prefix the bootstrap was built for
  *     │   ├── bin/       ← executables (bash, python3, pkg, apt ...)
  *     │   ├── lib/       ← shared libraries
  *     │   ├── libexec/   ← auxiliary executables
@@ -34,18 +34,30 @@ import java.io.File
  *     │   ├── var/       ← variable data (logs, caches)
  *     │   └── tmp/       ← temporary files (also exposed as $TMPDIR)
  *     ├── home/          ← HOME ($HOME)
- *     └── .bootstrap_ok  ← marker file (bootstrap installed)
+ *     ├── .libtermux_bootstrap_ok ← marker file (bootstrap installed)
+ *     └── libtermux/     ← library-private data (e.g. distros/), not part of the Termux prefix
  */
 class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
 
-    /** Root of the entire virtual filesystem: filesDir/libtermux */
+    /** Library-private data directory: filesDir/libtermux (distros etc.). NOT the Termux prefix. */
     val root: File = File(context.filesDir, "libtermux").also { it.mkdirs() }
 
     /** The app's private files directory (context.filesDir) — for locating sibling storage like distros/ */
     val filesDir: File = context.filesDir
 
-    val prefixDir: File   = File(root, "usr").also       { it.mkdirs() }
-    val homeDir: File     = File(root, "home").also      { it.mkdirs() }
+    /**
+     * Termux binaries have `/data/data/<package>/files/usr` compiled in. `filesDir` usually
+     * resolves to `/data/user/0/<package>/files` (same directory, different spelling), so use the
+     * `/data/data/...` spelling whenever it points at the same directory.
+     */
+    private val rootfsDir: File = run {
+        val canonical = File("/data/data/${context.packageName}/files")
+        if (runCatching { canonical.canonicalPath == context.filesDir.canonicalPath }.getOrDefault(false)) canonical
+        else context.filesDir
+    }
+
+    val prefixDir: File   = File(rootfsDir, "usr").also  { it.mkdirs() }
+    val homeDir: File     = File(rootfsDir, "home").also { it.mkdirs() }
     val tmpDir: File      = File(prefixDir, "tmp").also  { it.mkdirs() }
     val binDir: File      = File(prefixDir, "bin").also  { it.mkdirs() }
     val libDir: File      = File(prefixDir, "lib").also  { it.mkdirs() }
@@ -54,7 +66,7 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
     val shareDir: File    = File(prefixDir, "share").also{ it.mkdirs() }
     val varDir: File      = File(prefixDir, "var").also  { it.mkdirs() }
 
-    private val markerFile: File = File(root, ".bootstrap_ok")
+    private val markerFile: File = File(rootfsDir, ".libtermux_bootstrap_ok")
 
     val isBootstrapInstalled: Boolean get() = markerFile.exists()
 
@@ -62,8 +74,10 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
     fun clearBootstrapMarker() { markerFile.delete() }
 
     fun resetAll() {
-        root.deleteRecursively()
-        root.mkdirs()
+        // Only the Termux prefix/home — filesDir itself also holds unrelated app data.
+        prefixDir.deleteRecursively()
+        homeDir.deleteRecursively()
+        markerFile.delete()
         prefixDir.mkdirs()
         homeDir.mkdirs()
         tmpDir.mkdirs()
@@ -135,7 +149,8 @@ class VirtualFileSystem(context: Context, private val config: TermuxConfig) {
     }
 
     /** Get disk usage of the entire libtermux root in bytes */
-    fun diskUsageBytes(): Long = root.walkTopDown().sumOf { it.length() }
+    fun diskUsageBytes(): Long =
+        listOf(prefixDir, homeDir, root).sumOf { dir -> dir.walkTopDown().sumOf { it.length() } }
 
     /** Human-readable disk usage */
     fun diskUsageString(): String {
