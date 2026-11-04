@@ -10,7 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.libtermux.sample"
         minSdk        = 26
-        targetSdk     = 34
+        // Termux-style: exec() of files extracted into app-private storage is
+        // only allowed for targetSdk <= 28 (W^X restriction from API 29).
+        targetSdk     = 28
         versionCode   = 1
         versionName   = "1.0.0"
     }
@@ -24,6 +26,11 @@ android {
 
     buildFeatures {
         viewBinding = true
+    }
+
+    lint {
+        // Intentional: see targetSdk comment above.
+        disable += "ExpiredTargetSdkVersion"
     }
 
     compileOptions {
@@ -41,10 +48,9 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":terminal-view"))
-    // Demonstrates the install-time-executable fix — without this, bash
-    // exec fails with EACCES on Android 10+. See NativeLibBootstrapProvider
-    // usage in MainViewModel.kt. Real apps should add every ABI they ship
-    // for (bootstrap-arm, bootstrap-x86_64, bootstrap-x86 alongside this).
+    // Embeds the Termux bootstrap zip as an asset (extracted on first run).
+    // Real apps should add every ABI they ship for (bootstrap-arm,
+    // bootstrap-x86_64, bootstrap-x86 alongside this).
     implementation(project(":bootstrap-arm64"))
     
     // UI Dependencies

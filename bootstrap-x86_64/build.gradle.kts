@@ -2,9 +2,10 @@
  * LibTermux-Android — bootstrap-x86_64
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
- * Bundles Termux bootstrap binaries for the x86_64 ABI (emulators, some
- * Chromebooks/tablets). See bootstrap-arm64/build.gradle.kts for full
- * module documentation.
+ * Ships the official Termux bootstrap zip for "x86_64" as an Android asset
+ * (libtermux/bootstrap-x86_64.zip), Termux-style: :core extracts it into the
+ * prefix on first run, no network needed on the device. See
+ * build-logic/bootstrap-fetch BootstrapFetchPlugin.
  */
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import com.vanniktech.maven.publish.SonatypeHost
@@ -16,12 +17,8 @@ plugins {
 }
 
 bootstrapFetch {
-    abi.set("x86_64")
     termuxArch.set("x86_64")
     bootstrapTag.set("bootstrap-2026.05.24-r1+apt.android-7")
-    binaries.set(setOf("bash", "apt", "dpkg", "tar"))
-    includeProot.set(true)
-    prootArch.set("x86_64")
 }
 
 mavenPublishing {

@@ -151,63 +151,73 @@ class BootstrapInstaller(
 
         try {
             val arch = config.architecture.resolved()
-            val url = config.customBootstrapUrl ?: run {
-                val tag = if (config.bootstrapVersion == TermuxConfig.LATEST_BOOTSTRAP) {
-                    BootstrapReleaseResolver.resolveLatestTag()
-                } else {
-                    val version = config.bootstrapVersion
-                    when {
-                        version.contains("apt") -> "bootstrap-$version"
-                        else -> "bootstrap-$version+apt.android-7"
-                    }
-                }
-                val encodedTag = tag.replace("+", "%2B")
-                val baseUrl = "https://github.com/termux/termux-packages/releases/download"
-                "$baseUrl/$encodedTag/bootstrap-${arch.termuxName}.zip"
-            }
-
-            TermuxLogger.i("Downloading bootstrap for ${arch.termuxName}: $url")
-
+            // Termux-style: prefer the zip embedded in the APK by a bootstrap-<abi>
+            // module (assets/libtermux/bootstrap-<arch>.zip). Fall back to the
+            // network download only when none is bundled or a custom URL is set.
             val zipFile = File(context.cacheDir, "bootstrap-${arch.termuxName}.zip")
             var totalBytes = -1L
+            val usedEmbedded = config.customBootstrapUrl == null &&
+                copyEmbeddedBootstrap(arch.termuxName, zipFile)
 
-            val request = Request.Builder().url(url).build()
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val errorMsg = when (response.code) {
-                        404 -> "HTTP 404: Bootstrap not found. Architecture '${arch.termuxName}' may not be available. Try setting a customBootstrapUrl."
-                        403 -> "HTTP 403: Rate limited or forbidden by GitHub. Try again later or set a customBootstrapUrl."
-                        else -> "HTTP ${response.code}: ${response.message}"
+            if (usedEmbedded) {
+                TermuxLogger.i("Using bootstrap embedded in the APK (no download)")
+            } else {
+                val url = config.customBootstrapUrl ?: run {
+                    val tag = if (config.bootstrapVersion == TermuxConfig.LATEST_BOOTSTRAP) {
+                        BootstrapReleaseResolver.resolveLatestTag()
+                    } else {
+                        val version = config.bootstrapVersion
+                        when {
+                            version.contains("apt") -> "bootstrap-$version"
+                            else -> "bootstrap-$version+apt.android-7"
+                        }
                     }
-                    emit(InstallState.Failed(errorMsg))
-                    return@flow
+                    val encodedTag = tag.replace("+", "%2B")
+                    val baseUrl = "https://github.com/termux/termux-packages/releases/download"
+                    "$baseUrl/$encodedTag/bootstrap-${arch.termuxName}.zip"
                 }
-                totalBytes = response.body?.contentLength() ?: -1L
 
-                zipFile.outputStream().use { out ->
-                    val source = response.body?.byteStream() ?: run {
-                        emit(InstallState.Failed("Empty response body from server"))
+                TermuxLogger.i("Downloading bootstrap for ${arch.termuxName}: $url")
+
+                val request = Request.Builder().url(url).build()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val errorMsg = when (response.code) {
+                            404 -> "HTTP 404: Bootstrap not found. Architecture '${arch.termuxName}' may not be available. Try setting a customBootstrapUrl."
+                            403 -> "HTTP 403: Rate limited or forbidden by GitHub. Try again later or set a customBootstrapUrl."
+                            else -> "HTTP ${response.code}: ${response.message}"
+                        }
+                        emit(InstallState.Failed(errorMsg))
                         return@flow
                     }
+                    totalBytes = response.body?.contentLength() ?: -1L
 
-                    val buffer = ByteArray(8 * 1024)
-                    var bytesRead: Int
-                    var bytesCopied = 0L
-                    var lastProgress = 0f
+                    zipFile.outputStream().use { out ->
+                        val source = response.body?.byteStream() ?: run {
+                            emit(InstallState.Failed("Empty response body from server"))
+                            return@flow
+                        }
 
-                    while (source.read(buffer).also { bytesRead = it } != -1) {
-                        out.write(buffer, 0, bytesRead)
-                        bytesCopied += bytesRead
+                        val buffer = ByteArray(8 * 1024)
+                        var bytesRead: Int
+                        var bytesCopied = 0L
+                        var lastProgress = 0f
 
-                        if (totalBytes > 0) {
-                            val progress = bytesCopied.toFloat() / totalBytes
-                            if (progress - lastProgress >= 0.01f || progress >= 1f) {
-                                lastProgress = progress
-                                emit(InstallState.Downloading(progress, bytesCopied, totalBytes))
+                        while (source.read(buffer).also { bytesRead = it } != -1) {
+                            out.write(buffer, 0, bytesRead)
+                            bytesCopied += bytesRead
+
+                            if (totalBytes > 0) {
+                                val progress = bytesCopied.toFloat() / totalBytes
+                                if (progress - lastProgress >= 0.01f || progress >= 1f) {
+                                    lastProgress = progress
+                                    emit(InstallState.Downloading(progress, bytesCopied, totalBytes))
+                                }
                             }
                         }
                     }
                 }
+
             }
 
             if (totalBytes <= 0) {
@@ -279,6 +289,16 @@ class BootstrapInstaller(
             emit(InstallState.Failed(e.message ?: "Unknown error", e))
         }
     }.flowOn(Dispatchers.IO)
+
+    /** Copies assets/libtermux/bootstrap-<arch>.zip to [dest]; false if not bundled. */
+    private fun copyEmbeddedBootstrap(termuxArch: String, dest: File): Boolean = try {
+        context.assets.open("libtermux/bootstrap-$termuxArch.zip").use { input ->
+            dest.outputStream().use { out -> input.copyTo(out) }
+        }
+        true
+    } catch (_: java.io.FileNotFoundException) {
+        false
+    }
 
     fun uninstall() {
         vfs.resetAll()

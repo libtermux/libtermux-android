@@ -2,8 +2,10 @@
  * LibTermux-Android — bootstrap-arm
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
- * Bundles Termux bootstrap binaries for the armeabi-v7a (32-bit ARM) ABI.
- * See bootstrap-arm64/build.gradle.kts for full module documentation.
+ * Ships the official Termux bootstrap zip for "arm" as an Android asset
+ * (libtermux/bootstrap-arm.zip), Termux-style: :core extracts it into the
+ * prefix on first run, no network needed on the device. See
+ * build-logic/bootstrap-fetch BootstrapFetchPlugin.
  */
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import com.vanniktech.maven.publish.SonatypeHost
@@ -15,17 +17,8 @@ plugins {
 }
 
 bootstrapFetch {
-    abi.set("armeabi-v7a")
     termuxArch.set("arm")
     bootstrapTag.set("bootstrap-2026.05.24-r1+apt.android-7")
-    // busybox and proot are NOT in the Termux bootstrap archive — verified
-    // directly against a real bootstrap-aarch64.zip. Do not add them here.
-    binaries.set(setOf("bash", "apt", "dpkg", "tar"))
-    includeProot.set(true)
-    // Termux's official proot .deb uses "arm" (matches termuxArch above) —
-    // note this module previously used "armv7" for a since-removed
-    // third-party binary source with different naming; corrected here.
-    prootArch.set("arm")
 }
 
 mavenPublishing {

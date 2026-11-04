@@ -140,9 +140,9 @@ internal class ProotRunner(
     private fun ensureProot() {
         if (!executor.hasBundledBinary("proot")) {
             throw IllegalStateException(
-                "proot binary not found. Make sure your bootstrap-<abi> dependency has " +
-                "bootstrapFetch.includeProot = true (the default in the published modules) " +
-                "before setting up a distro."
+                "proot binary not found in the Termux prefix. Install it once with " +
+                "`pkg install -y proot` (Termux-style: the app targets SDK 28, so binaries " +
+                "installed under the prefix can be executed) before setting up a distro."
             )
         }
     }

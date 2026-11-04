@@ -2,17 +2,10 @@
  * LibTermux-Android — bootstrap-arm64
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
- * Bundles binaries needed by :core and :os for the arm64-v8a ABI, packaged
- * as src/main/jniLibs/arm64-v8a/lib*.so so Android's installer extracts
- * them with execute permission intact:
- *   - bash, apt, dpkg, tar — from the Termux bootstrap archive
- *   - proot — from Termux's official .deb package repository (see
- *     FetchProotBinaryTask in build-logic), needed by :os's ProotRunner
- *
- * Apps targeting only 64-bit ARM devices (the large majority of current
- * Android hardware) need only this one bootstrap artifact — see
- * core/bootstrap/BootstrapProvider.kt for how :core resolves binaries
- * bundled here at runtime.
+ * Ships the official Termux bootstrap zip for "aarch64" as an Android asset
+ * (libtermux/bootstrap-aarch64.zip), Termux-style: :core extracts it into the
+ * prefix on first run, no network needed on the device. See
+ * build-logic/bootstrap-fetch BootstrapFetchPlugin.
  */
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import com.vanniktech.maven.publish.SonatypeHost
@@ -24,18 +17,8 @@ plugins {
 }
 
 bootstrapFetch {
-    abi.set("arm64-v8a")
     termuxArch.set("aarch64")
     bootstrapTag.set("bootstrap-2026.05.24-r1+apt.android-7")
-    // busybox and proot are NOT in the Termux bootstrap archive — verified
-    // directly against a real bootstrap-aarch64.zip. Do not add them here.
-    binaries.set(setOf("bash", "apt", "dpkg", "tar"))
-    // proot comes from a separate source (see FetchProotBinaryTask) since
-    // it's not bundled in the bootstrap; needed for :os's ProotRunner.
-    // Included by default — the binary is small (a few hundred KB) relative
-    // to splitting this into proot/no-proot module variants.
-    includeProot.set(true)
-    prootArch.set("aarch64")
 }
 
 mavenPublishing {
