@@ -44,6 +44,8 @@ jobs:
           df -h /
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y jq zip unzip xz-utils dpkg-dev binutils apt-utils
+      - name: Grant execution permission
+        run: chmod +x ./bootstrap-builder/build-bootstrap.sh
       - name: Build bootstrap
         env:
           PACKAGE_NAME: ${{ inputs.package_name }}
