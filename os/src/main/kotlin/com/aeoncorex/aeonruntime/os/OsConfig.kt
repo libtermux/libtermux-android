@@ -1,5 +1,6 @@
 package com.aeoncorex.aeonruntime.os
 
+import com.aeoncorex.aeonruntime.RuntimeDsl
 import com.aeoncorex.aeonruntime.os.registry.DistroRegistry
 import com.aeoncorex.aeonruntime.os.registry.DistroRegistryBuilder
 import java.io.File

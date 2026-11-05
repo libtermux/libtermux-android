@@ -28,6 +28,8 @@ import com.aeoncorex.aeonruntime.bridge.RuntimeBridge
 import com.aeoncorex.aeonruntime.utils.RuntimeLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -114,20 +116,20 @@ class ShizukuRuntimeBridge private constructor(
             val listener = object : Shizuku.OnRequestPermissionResultListener {
                 override fun onRequestPermissionResult(reqCode: Int, grantResult: Int) {
                     if (reqCode == requestCode) {
-                        Shizuku.removeOnRequestPermissionResultListener(this)
+                        Shizuku.removeRequestPermissionResultListener(this)
                         cont.resume(grantResult == PackageManager.PERMISSION_GRANTED)
                     }
                 }
             }
 
-            Shizuku.addOnRequestPermissionResultListener(listener)
+            Shizuku.addRequestPermissionResultListener(listener)
             cont.invokeOnCancellation {
-                Shizuku.removeOnRequestPermissionResultListener(listener)
+                Shizuku.removeRequestPermissionResultListener(listener)
             }
 
             runCatching { Shizuku.requestPermission(requestCode) }
                 .onFailure {
-                    Shizuku.removeOnRequestPermissionResultListener(listener)
+                    Shizuku.removeRequestPermissionResultListener(listener)
                     cont.resume(false)
                 }
         }
@@ -160,21 +162,29 @@ class ShizukuRuntimeBridge private constructor(
 
         return withContext(Dispatchers.IO) {
             try {
-                // Shizuku.exec takes String[] args, String[] env, String dir
                 val envArray: Array<String> = env.map { (k, v) -> "$k=$v" }.toTypedArray()
 
-                val output = Shizuku.exec(
+                val process = newShizukuProcess(
                     arrayOf("sh", "-c", command),
                     envArray.ifEmpty { null },
                     workDir,
                 )
-
-                ElevatedResult(
-                    stdout   = output.stdout ?: "",
-                    stderr   = output.stderr ?: "",
-                    exitCode = output.exitCode,
-                    elevated = true,
-                )
+                try {
+                    // Read both streams concurrently so a full pipe can't block the process.
+                    val (out, err) = coroutineScope {
+                        val o = async { process.inputStream.bufferedReader().readText() }
+                        val e = async { process.errorStream.bufferedReader().readText() }
+                        o.await() to e.await()
+                    }
+                    ElevatedResult(
+                        stdout   = out,
+                        stderr   = err,
+                        exitCode = process.waitFor(),
+                        elevated = true,
+                    )
+                } finally {
+                    process.destroy()
+                }
             } catch (e: Exception) {
                 RuntimeLogger.e("Shizuku exec failed: ${e.message}", e)
                 // Fallback to normal execution on Shizuku error
@@ -211,6 +221,23 @@ class ShizukuRuntimeBridge private constructor(
 
     /** Destroy the instance and release resources */
     fun destroy() = runtime.release()
+
+    /**
+     * Starts a process in Shizuku's shell.
+     *
+     * `Shizuku.newProcess` is not part of the public API since Shizuku API 13 (the supported
+     * route is a `UserService`), so it is invoked reflectively here. This is an unsupported
+     * workaround: it may break with future Shizuku versions. Any failure is reported to the
+     * caller as an exception, which [runElevated] turns into an unelevated fallback.
+     */
+    private fun newShizukuProcess(cmd: Array<String>, env: Array<String>?, dir: String?): Process {
+        val method = Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java, Array<String>::class.java, String::class.java,
+        )
+        method.isAccessible = true
+        return method.invoke(null, cmd, env, dir) as Process
+    }
 
     // ── Singleton ─────────────────────────────────────────────────────────
 

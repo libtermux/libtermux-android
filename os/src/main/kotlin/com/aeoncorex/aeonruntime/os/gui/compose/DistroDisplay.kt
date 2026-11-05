@@ -208,7 +208,7 @@ fun DistroDisplay(
                                 canvas.nativeCanvas.scale(scale, scale)
                                 drawImage(
                                     image   = img,
-                                    dstSize = Size(size.width / scale, size.height / scale),
+                                    dstSize = IntSize((size.width / scale).toInt(), (size.height / scale).toInt()),
                                 )
                                 canvas.nativeCanvas.restore()
                             }

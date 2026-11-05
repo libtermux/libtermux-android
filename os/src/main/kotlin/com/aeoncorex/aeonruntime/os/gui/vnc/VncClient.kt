@@ -302,7 +302,7 @@ class VncClient(
         val inp = input ?: return
         val out = output ?: return
 
-        while (isActive && _state.value is VncState.Connected) {
+        while (currentCoroutineContext().isActive && _state.value is VncState.Connected) {
             try {
                 when (val msgType = inp.readUnsignedByte()) {
                     0    -> handleFramebufferUpdate(inp)

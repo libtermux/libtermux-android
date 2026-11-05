@@ -53,7 +53,13 @@ pre-release development version inherited from the project's former name; nothin
 - `ShizukuRuntimeBridge` called `AeonRuntime.getInstance(context, config)`, which does not exist; it now calls
   `AeonRuntime.initialize(context, config)`.
 
-These two fixes are **unverified by a compiler** in the environment where the migration was prepared.
+- Further compile errors in `:os` and `:shizuku` found by the first CI run (missing `RuntimeDsl` import,
+  undefined DataStore key helpers, `Size`/`IntSize` mismatch, `isActive` misuse, wrong Shizuku 13.1.5 API
+  calls). Details in [`docs/migration/KNOWN_ISSUES.md`](docs/migration/KNOWN_ISSUES.md) (A3–A7).
+- `ShizukuRuntimeBridge.runElevated` now starts the Shizuku process via reflection on `Shizuku.newProcess`
+  (unsupported workaround; see KNOWN_ISSUES B15).
+
+These fixes were written without a compiler; the first two were later partly confirmed by CI.
 
 ### Not changed on purpose
 

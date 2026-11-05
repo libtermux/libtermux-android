@@ -13,6 +13,11 @@ import kotlinx.coroutines.flow.map
 private val Context.distroDataStore: DataStore<Preferences>
     by preferencesDataStore(name = "aeonruntime_distro_settings")
 
+// Short aliases for the DataStore key factories used throughout this file.
+private fun intKey(name: String)     = intPreferencesKey(name)
+private fun stringKey(name: String)  = stringPreferencesKey(name)
+private fun booleanKey(name: String) = booleanPreferencesKey(name)
+
 /**
  * Per-distro runtime settings persisted via DataStore.
  *

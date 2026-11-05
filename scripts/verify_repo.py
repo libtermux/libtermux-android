@@ -58,7 +58,8 @@ def rel(p: pathlib.Path) -> str:
 # Kotlin source index
 # ---------------------------------------------------------------------------------------
 DECL_RE = re.compile(
-    r"^(?:(?:public|internal|private|protected|data|sealed|enum|abstract|open|annotation|inline|"
+    r"^(?:@\w+(?:\([^)]*\))?\s+)*"                  # leading annotations on the same line
+    r"(?:(?:public|internal|private|protected|data|sealed|enum|abstract|open|annotation|inline|"
     r"value|fun|const|expect|actual|suspend|operator|infix|tailrec|external)\s+)*"
     r"(class|interface|object|typealias|fun|val|var)\s+"
     r"(?:<[^>]+>\s*)?"                         # generic params, e.g. fun <reified T>

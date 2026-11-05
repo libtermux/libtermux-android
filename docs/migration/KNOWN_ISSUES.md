@@ -17,9 +17,24 @@ Commit `fix (pre-existing, NOT part of the rename)`; revert it if you prefer to 
 | A1 | `RuntimeLogger` (was `TermuxLogger`) was `internal` to `:core` but imported by 6 files in `:os` and 1 in `:shizuku`. Kotlin `internal` is module-scoped, so those modules could not compile. Fix: made it `public` (documented as intended for AeonRuntime modules, not a stable API). A cleaner long-term option is a dedicated opt-in annotation or a small shared API. | Confirmed by reading |
 | A2 | `ShizukuRuntimeBridge` called `AeonRuntime.getInstance(context, config)`; only `getInstance()` (no arguments) exists. Fix: `AeonRuntime.initialize(context, config)`. | Confirmed by reading |
 
-Both fixes are **uncompiled**. They probably explain why upstream CI only ever built `:core` and `:sample`.
-The new CI builds every module; if other baseline compile errors exist in `:os`, `:shizuku` or
-`:terminal-view`, CI will show them.
+A1 and A2 were not compiled when written. The first real CI run on GitHub then confirmed that `:core`
+compiles and revealed further **baseline** compile errors in `:os` and `:shizuku` (each also present in the
+pre-migration code, so not caused by the rename). They are fixed in a second separate commit:
+
+| # | Error reported by CI | Cause (also in baseline) | Fix |
+|---|---|---|---|
+| A3 | `OsConfig.kt`: unresolved `RuntimeDsl` | `@TermuxDsl` was used without an import; the marker lives in another package | added `import com.aeoncorex.aeonruntime.RuntimeDsl` |
+| A4 | `DistroSettings.kt`: unresolved `intKey` / `stringKey` / `booleanKey` | helpers were never defined anywhere | private aliases for `intPreferencesKey` / `stringPreferencesKey` / `booleanPreferencesKey` |
+| A5 | `DistroDisplay.kt`: `Size` vs `IntSize` | `drawImage(dstSize = …)` takes `IntSize` | `IntSize((w / scale).toInt(), (h / scale).toInt())` |
+| A6 | `VncClient.kt`: `isActive` receiver mismatch | `isActive` used in a plain `suspend fun` | `currentCoroutineContext().isActive` |
+| A7 | `ShizukuRuntimeBridge.kt`: unresolved `add/removeOnRequestPermissionResultListener` and `Shizuku.exec` | wrong method names for Shizuku API 13.1.5; `Shizuku.exec` does not exist | renamed to `add/removeRequestPermissionResultListener`; replaced `exec` with a reflective call to `Shizuku.newProcess` (see B15) |
+
+A3–A7 are verified only by the compiler errors they address; they were not compiled after the fix. More
+errors may appear in code the compiler had not reached yet (remaining `:os` and `:shizuku` sources, their
+tests, `:terminal-view`, `:sample`).
+
+`scripts/verify_repo.py` did **not** catch A3–A7: it checks imports that exist, not references that lack an
+import, and cannot know third-party API signatures. It is a complement to a compiler, not a substitute.
 
 ## B. Found and deliberately left unchanged
 
@@ -39,6 +54,8 @@ The new CI builds every module; if other baseline compile errors exist in `:os`,
 | B12 | `NativeUtils.load()` is not synchronised and records success even if `System.loadLibrary` throws. | `utils/NativeUtils.kt` | Confirmed by reading | Set the flag only on success; guard with a lock |
 | B13 | The release workflow's publish task name was carried over unchanged and is unverified against the pinned publishing plugin. | `.github/workflows/release.yml` | Unverified | Check `./gradlew :core:tasks --group publishing` |
 | B14 | `ShizukuRuntimeBridge.runElevated` silently falls back to unelevated execution when Shizuku fails (the result's `elevated` flag is `false`). Callers must check it. | `ShizukuRuntimeBridge.kt` | Confirmed by reading | Consider a strict mode that fails instead |
+
+| B15 | `Shizuku.newProcess` is not public API in Shizuku 13.x; the supported route is a `UserService`. `ShizukuRuntimeBridge` now calls it reflectively as an unsupported workaround that may break with future Shizuku versions. | `ShizukuRuntimeBridge.kt` (`newShizukuProcess`) | Confirmed by reading; not run on a device | Implement a `UserService` |
 
 ## C. Behaviour changes caused by the rename (not bugs)
 
