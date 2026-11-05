@@ -25,3 +25,7 @@ Thumbs.db
 
 # Docs output
 docs/api/
+
+# Python bytecode (from scripts/*.py)
+__pycache__/
+*.pyc

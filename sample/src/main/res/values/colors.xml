@@ -1,20 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Catppuccin Mocha palette -->
-    <color name="catppuccin_base">#1E1E2E</color>
-    <color name="catppuccin_crust">#11111B</color>
-    <color name="catppuccin_surface0">#313244</color>
-    <color name="catppuccin_surface1">#45475A</color>
-    <color name="catppuccin_overlay0">#6C7086</color>
-    <color name="catppuccin_text">#CDD6F4</color>
-    <color name="catppuccin_subtext">#BAC2DE</color>
-    <color name="catppuccin_mauve">#CBA6F7</color>
-    <color name="catppuccin_lavender">#B4BEFE</color>
-    <color name="catppuccin_green">#A6E3A1</color>
-    <color name="catppuccin_red">#F38BA8</color>
-    <color name="catppuccin_yellow">#F9E2AF</color>
-    <color name="catppuccin_teal">#94E2D5</color>
+    <!-- AeonCoreX brand palette -->
+    <color name="aeon_bg_primary">#0A0E17</color>
+    <color name="aeon_bg_secondary">#17243D</color>
+    <color name="aeon_accent_primary">#2D6BFF</color>
+    <color name="aeon_accent_secondary">#9B2FE0</color>
+
+    <!-- Neutral text tones. Not part of the specified brand palette; chosen only so
+         text stays legible on the dark backgrounds above. -->
+    <color name="aeon_text">#E6EAF2</color>
+    <color name="aeon_text_muted">#8A94A8</color>
 
     <!-- Adaptive icon background -->
-    <color name="ic_launcher_background">#1E1E2E</color>
+    <color name="ic_launcher_background">@color/aeon_bg_primary</color>
 </resources>

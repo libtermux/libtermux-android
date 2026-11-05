@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android
+ * AeonRuntime
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  * Author: cybernahid-dev (Systems Developer)
- * Project: https://github.com/AeonCoreX-Lab/libtermux-android
+ * Project: https://github.com/AeonCoreX-Lab/AeonRuntime
  */
 #include <jni.h>
 #include <android/log.h>
@@ -23,7 +23,7 @@
 #include <vector>
 #include <string>
 
-#define TAG  "LibTermux-Process"
+#define TAG  "AeonRuntime-Process"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 
@@ -36,7 +36,7 @@ extern "C" {
  * Returns the PID of the child, or -1 on error.
  */
 JNIEXPORT jint JNICALL
-Java_com_libtermux_utils_NativeUtils_forkProcess(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_forkProcess(
     JNIEnv*      env,
     jclass       /* clazz */,
     jstring      exec_str,
@@ -109,7 +109,7 @@ Java_com_libtermux_utils_NativeUtils_forkProcess(
  * Send a signal to a process.
  */
 JNIEXPORT jint JNICALL
-Java_com_libtermux_utils_NativeUtils_sendSignal(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_sendSignal(
     JNIEnv* /* env */,
     jclass  /* clazz */,
     jint    pid,
@@ -122,7 +122,7 @@ Java_com_libtermux_utils_NativeUtils_sendSignal(
  * Wait for a process to exit. Returns exit status.
  */
 JNIEXPORT jint JNICALL
-Java_com_libtermux_utils_NativeUtils_waitForProcess(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_waitForProcess(
     JNIEnv* /* env */,
     jclass  /* clazz */,
     jint    pid

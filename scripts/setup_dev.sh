@@ -5,7 +5,7 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-info "LibTermux Android — Dev Setup"
+info "AeonRuntime — Dev Setup"
 
 # Check Java
 if ! command -v java &>/dev/null; then error "Java not found. Install JDK 17+."; fi

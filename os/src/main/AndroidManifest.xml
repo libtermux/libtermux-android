@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-        LibTermux OS Module — Required Permissions
+        AeonRuntime OS Module — Required Permissions
         These are merged into the consuming app's manifest automatically.
     -->
 

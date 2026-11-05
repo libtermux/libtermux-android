@@ -9,7 +9,7 @@
 
     <application>
         <service
-            android:name="com.libtermux.service.TermuxBackgroundService"
+            android:name="com.aeoncorex.aeonruntime.service.RuntimeBackgroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
@@ -20,7 +20,7 @@
             android:exported="false"
             tools:node="merge">
             <meta-data
-                android:name="com.libtermux.initializer.LibTermuxInitializer"
+                android:name="com.aeoncorex.aeonruntime.initializer.AeonRuntimeInitializer"
                 android:value="androidx.startup" />
         </provider>
     </application>

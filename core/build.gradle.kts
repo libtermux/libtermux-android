@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android — Core Module Build Script
+ * AeonRuntime — Core Module Build Script
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
  * Licensed under the Apache License, Version 2.0
@@ -16,7 +16,7 @@ plugins {
 }
 
 android {
-    namespace  = "com.libtermux"
+    namespace  = "com.aeoncorex.aeonruntime"
     compileSdk = 34
 
     defaultConfig {

@@ -1,22 +1,22 @@
-# LibTermux OS Module — ProGuard/R8 consumer rules
+# AeonRuntime OS Module — ProGuard/R8 consumer rules
 # Applied automatically to any app that depends on :os
 
--keep class com.libtermux.os.** { public *; }
--keep class com.libtermux.os.distro.** { *; }
--keep class com.libtermux.os.registry.** { *; }
--keep class com.libtermux.os.settings.** { *; }
--keep class com.libtermux.os.gui.** { *; }
--keep class com.libtermux.os.gui.vnc.** { *; }
--keep class com.libtermux.os.gui.compose.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.** { public *; }
+-keep class com.aeoncorex.aeonruntime.os.distro.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.registry.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.settings.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.gui.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.gui.vnc.** { *; }
+-keep class com.aeoncorex.aeonruntime.os.gui.compose.** { *; }
 
 # Sealed class subclasses — required for when() exhaustive checks
--keep class com.libtermux.os.distro.DistroSetupState$* { *; }
--keep class com.libtermux.os.gui.vnc.VncState$* { *; }
--keep class com.libtermux.os.gui.DesktopSessionState$* { *; }
--keep class com.libtermux.os.SuResult$* { *; }
--keep class com.libtermux.os.distro.Distro$* { *; }
+-keep class com.aeoncorex.aeonruntime.os.distro.DistroSetupState$* { *; }
+-keep class com.aeoncorex.aeonruntime.os.gui.vnc.VncState$* { *; }
+-keep class com.aeoncorex.aeonruntime.os.gui.DesktopSessionState$* { *; }
+-keep class com.aeoncorex.aeonruntime.os.SuResult$* { *; }
+-keep class com.aeoncorex.aeonruntime.os.distro.Distro$* { *; }
 
--keepclassmembers class com.libtermux.os.distro.Distro {
+-keepclassmembers class com.aeoncorex.aeonruntime.os.distro.Distro {
     public static ** Companion;
     public static ** all;
     public static ** fromId(...);

@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android — Root Project Settings
+ * AeonRuntime — Root Project Settings
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  */
 pluginManagement {
@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "libtermux-android"
+rootProject.name = "AeonRuntime"
 
 // Core SDK — bootstrap, executor, bridge, file system
 include(":core")

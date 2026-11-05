@@ -27,8 +27,8 @@ if [[ "${1:-}" == "release" ]]; then
   for d in "$SRC"/apt-*/; do cp -a "$d". "$OUT"/; done
   archs=$(ls "$OUT/dists/stable/main" | sed 's/^binary-//' | tr '\n' ' ')
   ( cd "$OUT" && apt-ftparchive \
-      -o APT::FTPArchive::Release::Origin=libtermux \
-      -o APT::FTPArchive::Release::Label=libtermux \
+      -o APT::FTPArchive::Release::Origin=aeonruntime \
+      -o APT::FTPArchive::Release::Label=aeonruntime \
       -o APT::FTPArchive::Release::Suite=stable \
       -o APT::FTPArchive::Release::Codename=stable \
       -o APT::FTPArchive::Release::Architectures="$archs" \
@@ -51,7 +51,7 @@ OUT_DIR="${OUT_DIR:-$PWD/dist}"
 REPO_URL="${REPO_URL%/}"
 
 TP="$WORK_DIR/termux-packages-$ARCH"
-IMAGE="libtermux-builder:${PACKAGE_NAME}"
+IMAGE="aeonruntime-builder:${PACKAGE_NAME}"
 REPO_DIR="$WORK_DIR/apt-$ARCH"
 mkdir -p "$WORK_DIR" "$OUT_DIR"
 
@@ -80,7 +80,7 @@ BOOT_PKGS=$(grep -oE 'pull_package [a-z0-9_.+-]+' "$TP/scripts/generate-bootstra
 PKGS="apt dpkg $BOOT_PKGS $EXTRA_PACKAGES"
 log "Compiling for $ARCH (dependencies are built from source too): $PKGS"
 ( cd "$TP" && rm -rf output && \
-  TERMUX_BUILDER_IMAGE_NAME="$IMAGE" CONTAINER_NAME="libtermux-builder-${ARCH}" \
+  TERMUX_BUILDER_IMAGE_NAME="$IMAGE" CONTAINER_NAME="aeonruntime-builder-${ARCH}" \
   ./scripts/run-docker.sh ./build-package.sh -a "$ARCH" -o output $PKGS )
 
 # 5. Turn output/*.deb into an apt repository layout
@@ -99,7 +99,7 @@ ZIP="$TP/bootstrap-$ARCH.zip"
 
 # 7. apt must use our repo (unsigned -> trusted=yes; the repo is served over HTTPS)
 TMP=$(mktemp -d); mkdir -p "$TMP/etc/apt"
-printf '# libtermux repository for %s\ndeb [trusted=yes] %s stable main\n' "$PACKAGE_NAME" "$REPO_URL" > "$TMP/etc/apt/sources.list"
+printf '# aeonruntime repository for %s\ndeb [trusted=yes] %s stable main\n' "$PACKAGE_NAME" "$REPO_URL" > "$TMP/etc/apt/sources.list"
 ( cd "$TMP" && zip -q "$ZIP" etc/apt/sources.list ); rm -rf "$TMP"
 
 # 8. Sanity checks: the prefix must match PACKAGE_NAME and no com.termux paths may remain

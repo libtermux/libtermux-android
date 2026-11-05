@@ -1,7 +1,7 @@
-# LibTermux proguard rules
--keep class com.libtermux.** { *; }
--keepclassmembers class com.libtermux.** { *; }
--keep interface com.libtermux.** { *; }
+# AeonRuntime proguard rules
+-keep class com.aeoncorex.aeonruntime.** { *; }
+-keepclassmembers class com.aeoncorex.aeonruntime.** { *; }
+-keep interface com.aeoncorex.aeonruntime.** { *; }
 
 # Kotlin serialization
 -keepattributes *Annotation*, InnerClasses

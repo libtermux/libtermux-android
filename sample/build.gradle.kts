@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.libtermux.sample"
+    namespace = "com.aeoncorex.aeonruntime.sample"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.libtermux.sample"
+        applicationId = "com.aeoncorex.aeonruntime.sample"
         minSdk        = 26
         // Termux-style: exec() of files extracted into app-private storage is
         // only allowed for targetSdk <= 28 (W^X restriction from API 29).

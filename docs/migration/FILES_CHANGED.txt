@@ -1,0 +1,111 @@
+# Files changed between the pre-migration baseline (ecb4a0b) and the final migration commit.
+# Generated with: git diff -M --name-status ecb4a0b HEAD   (R<n> = rename with n% similarity)
+M	.github/workflows/build-bootstrap.yml
+M	.github/workflows/ci.yml
+M	.github/workflows/release.yml
+M	.gitignore
+M	CHANGELOG.md
+A	CONTRIBUTING.md
+M	README.md
+M	bootstrap-arm/build.gradle.kts
+M	bootstrap-arm64/build.gradle.kts
+M	bootstrap-builder/README.md
+M	bootstrap-builder/build-bootstrap.sh
+M	bootstrap-x86/build.gradle.kts
+M	bootstrap-x86_64/build.gradle.kts
+M	build-logic/bootstrap-fetch/build.gradle.kts
+R076	build-logic/bootstrap-fetch/src/main/kotlin/libtermux.bootstrap-module.gradle.kts	build-logic/bootstrap-fetch/src/main/kotlin/aeonruntime.bootstrap-module.gradle.kts
+R088	build-logic/bootstrap-fetch/src/main/kotlin/com/libtermux/buildlogic/BootstrapFetchPlugin.kt	build-logic/bootstrap-fetch/src/main/kotlin/com/aeoncorex/aeonruntime/buildlogic/BootstrapFetchPlugin.kt
+M	build-logic/settings.gradle.kts
+M	build.gradle.kts
+M	core/build.gradle.kts
+M	core/consumer-rules.pro
+M	core/proguard-rules.pro
+M	core/src/main/AndroidManifest.xml
+M	core/src/main/jni/CMakeLists.txt
+R089	core/src/main/jni/termux_jni.cpp	core/src/main/jni/aeonruntime_jni.cpp
+M	core/src/main/jni/process_helper.cpp
+M	core/src/main/jni/pty_helper.cpp
+A	core/src/main/kotlin/com/aeoncorex/aeonruntime/AeonRuntime.kt
+R076	core/src/main/kotlin/com/libtermux/TermuxConfig.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/RuntimeConfig.kt
+R082	core/src/main/kotlin/com/libtermux/bootstrap/BootstrapInstaller.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/bootstrap/BootstrapInstaller.kt
+R094	core/src/main/kotlin/com/libtermux/bootstrap/BootstrapProvider.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/bootstrap/BootstrapProvider.kt
+R090	core/src/main/kotlin/com/libtermux/bridge/TermuxBridge.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/bridge/RuntimeBridge.kt
+R091	core/src/main/kotlin/com/libtermux/executor/CommandExecutor.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/executor/CommandExecutor.kt
+R096	core/src/main/kotlin/com/libtermux/executor/ExecutionResult.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/executor/ExecutionResult.kt
+R096	core/src/main/kotlin/com/libtermux/executor/SessionManager.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/executor/SessionManager.kt
+R088	core/src/main/kotlin/com/libtermux/fs/VirtualFileSystem.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/filesystem/VirtualFileSystem.kt
+R075	core/src/main/kotlin/com/libtermux/initializer/LibTermuxInitializer.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/initializer/AeonRuntimeInitializer.kt
+R086	core/src/main/kotlin/com/libtermux/initializer/BuildConfig.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/initializer/BuildConfig.kt
+R094	core/src/main/kotlin/com/libtermux/os/RootUtils.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/os/RootUtils.kt
+R091	core/src/main/kotlin/com/libtermux/pkg/PackageManager.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/packagemanager/PackageManager.kt
+R077	core/src/main/kotlin/com/libtermux/service/TermuxBackgroundService.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/service/RuntimeBackgroundService.kt
+R086	core/src/main/kotlin/com/libtermux/utils/ArchUtils.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/utils/ArchUtils.kt
+R075	core/src/main/kotlin/com/libtermux/utils/Extensions.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/utils/Extensions.kt
+R092	core/src/main/kotlin/com/libtermux/utils/FileUtils.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/utils/FileUtils.kt
+R087	core/src/main/kotlin/com/libtermux/utils/NativeUtils.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/utils/NativeUtils.kt
+R071	core/src/main/kotlin/com/libtermux/utils/Logger.kt	core/src/main/kotlin/com/aeoncorex/aeonruntime/utils/RuntimeLogger.kt
+D	core/src/main/kotlin/com/libtermux/LibTermux.kt
+R093	core/src/test/kotlin/com/libtermux/ExecutionResultTest.kt	core/src/test/kotlin/com/aeoncorex/aeonruntime/ExecutionResultTest.kt
+R090	core/src/test/kotlin/com/libtermux/PackageManagerTest.kt	core/src/test/kotlin/com/aeoncorex/aeonruntime/PackageManagerTest.kt
+R087	core/src/test/kotlin/com/libtermux/TermuxConfigTest.kt	core/src/test/kotlin/com/aeoncorex/aeonruntime/RuntimeConfigTest.kt
+R091	core/src/test/kotlin/com/libtermux/VirtualFileSystemTest.kt	core/src/test/kotlin/com/aeoncorex/aeonruntime/VirtualFileSystemTest.kt
+A	docs/ARCHITECTURE.md
+A	docs/BUILDING.md
+A	docs/INTEGRATION_GUIDE.md
+A	docs/architecture/execution-engines.md
+A	docs/architecture/local-ai.md
+M	docs/index.html
+A	docs/migration/FILES_CHANGED.txt
+A	docs/migration/KNOWN_ISSUES.md
+A	docs/migration/MIGRATION_REPORT.md
+A	docs/migration/RENAME_MAP.md
+M	docs/readme-banner-v2.svg
+M	gradle.properties
+M	os/build.gradle.kts
+M	os/consumer-rules.pro
+M	os/src/main/AndroidManifest.xml
+R092	os/src/main/kotlin/com/libtermux/os/OsConfig.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/OsConfig.kt
+R087	os/src/main/kotlin/com/libtermux/os/OsEnvironment.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/OsEnvironment.kt
+R072	os/src/main/kotlin/com/libtermux/os/OsExtensions.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/OsExtensions.kt
+R091	os/src/main/kotlin/com/libtermux/os/chroot/ChrootRunner.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/chroot/ChrootRunner.kt
+R080	os/src/main/kotlin/com/libtermux/os/chroot/MountManager.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/chroot/MountManager.kt
+R099	os/src/main/kotlin/com/libtermux/os/distro/Distro.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/distro/Distro.kt
+R097	os/src/main/kotlin/com/libtermux/os/distro/DistroSetupState.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/distro/DistroSetupState.kt
+R092	os/src/main/kotlin/com/libtermux/os/gui/DesktopSession.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/DesktopSession.kt
+R097	os/src/main/kotlin/com/libtermux/os/gui/compose/DistroDisplay.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/compose/DistroDisplay.kt
+R096	os/src/main/kotlin/com/libtermux/os/gui/compose/DistroLauncher.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/compose/DistroLauncher.kt
+R097	os/src/main/kotlin/com/libtermux/os/gui/compose/DistroSettingsScreen.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/compose/DistroSettingsScreen.kt
+R096	os/src/main/kotlin/com/libtermux/os/gui/vnc/VncClient.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/vnc/VncClient.kt
+R098	os/src/main/kotlin/com/libtermux/os/gui/vnc/VncState.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/gui/vnc/VncState.kt
+R092	os/src/main/kotlin/com/libtermux/os/proot/ProotRunner.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/proot/ProotRunner.kt
+R094	os/src/main/kotlin/com/libtermux/os/registry/DistroRegistry.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/registry/DistroRegistry.kt
+R099	os/src/main/kotlin/com/libtermux/os/registry/SupportedDistro.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/registry/SupportedDistro.kt
+R095	os/src/main/kotlin/com/libtermux/os/settings/DistroSettings.kt	os/src/main/kotlin/com/aeoncorex/aeonruntime/os/settings/DistroSettings.kt
+R096	os/src/test/kotlin/com/libtermux/os/OsConfigTest.kt	os/src/test/kotlin/com/aeoncorex/aeonruntime/os/OsConfigTest.kt
+R096	os/src/test/kotlin/com/libtermux/os/distro/DistroTest.kt	os/src/test/kotlin/com/aeoncorex/aeonruntime/os/distro/DistroTest.kt
+R096	os/src/test/kotlin/com/libtermux/os/registry/DistroRegistryTest.kt	os/src/test/kotlin/com/aeoncorex/aeonruntime/os/registry/DistroRegistryTest.kt
+R095	os/src/test/kotlin/com/libtermux/os/registry/SupportedDistroTest.kt	os/src/test/kotlin/com/aeoncorex/aeonruntime/os/registry/SupportedDistroTest.kt
+R093	os/src/test/kotlin/com/libtermux/os/settings/DistroRuntimeSettingsTest.kt	os/src/test/kotlin/com/aeoncorex/aeonruntime/os/settings/DistroRuntimeSettingsTest.kt
+M	sample/build.gradle.kts
+M	sample/src/main/AndroidManifest.xml
+R095	sample/src/main/kotlin/com/libtermux/sample/MainActivity.kt	sample/src/main/kotlin/com/aeoncorex/aeonruntime/sample/MainActivity.kt
+R085	sample/src/main/kotlin/com/libtermux/sample/MainViewModel.kt	sample/src/main/kotlin/com/aeoncorex/aeonruntime/sample/MainViewModel.kt
+M	sample/src/main/res/drawable/ic_launcher_foreground.xml
+M	sample/src/main/res/layout/activity_main.xml
+M	sample/src/main/res/values/colors.xml
+M	sample/src/main/res/values/strings.xml
+M	sample/src/main/res/values/themes.xml
+M	scripts/publish_local.sh
+M	scripts/setup_dev.sh
+A	scripts/verify_jni.py
+A	scripts/verify_repo.py
+M	settings.gradle.kts
+M	shizuku/build.gradle.kts
+M	shizuku/consumer-rules.pro
+M	shizuku/proguard-rules.pro
+R089	shizuku/src/main/kotlin/com/libtermux/shizuku/ElevatedResult.kt	shizuku/src/main/kotlin/com/aeoncorex/aeonruntime/shizuku/ElevatedResult.kt
+R082	shizuku/src/main/kotlin/com/libtermux/shizuku/ShizukuTermux.kt	shizuku/src/main/kotlin/com/aeoncorex/aeonruntime/shizuku/ShizukuRuntimeBridge.kt
+R094	shizuku/src/test/kotlin/com/libtermux/shizuku/ElevatedResultTest.kt	shizuku/src/test/kotlin/com/aeoncorex/aeonruntime/shizuku/ElevatedResultTest.kt
+M	terminal-view/build.gradle.kts
+R095	terminal-view/src/main/kotlin/com/libtermux/view/TerminalView.kt	terminal-view/src/main/kotlin/com/aeoncorex/aeonruntime/terminal/TerminalView.kt

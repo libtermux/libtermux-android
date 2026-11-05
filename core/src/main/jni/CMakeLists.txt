@@ -1,4 +1,4 @@
-# LibTermux-Android
+# AeonRuntime
 # Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,10 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Author: cybernahid-dev (Systems Developer)
-# Project: https://github.com/AeonCoreX-Lab/libtermux-android
+# Project: https://github.com/AeonCoreX-Lab/AeonRuntime
 
 cmake_minimum_required(VERSION 3.22.1)
-project("libtermux_jni" VERSION 1.0.0 LANGUAGES C CXX)
+project("aeonruntime_jni" VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,9 +29,9 @@ add_compile_options(
 
 # Shared library
 add_library(
-    libtermux_jni
+    aeonruntime_jni
     SHARED
-    termux_jni.cpp
+    aeonruntime_jni.cpp
     pty_helper.cpp
     process_helper.cpp
 )
@@ -41,9 +41,9 @@ find_library(log-lib log)
 find_library(android-lib android)
 
 target_link_libraries(
-    libtermux_jni
+    aeonruntime_jni
     ${log-lib}
     ${android-lib}
 )
 
-target_include_directories(libtermux_jni PRIVATE .)
+target_include_directories(aeonruntime_jni PRIVATE .)

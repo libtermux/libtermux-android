@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android — Root Build Script
+ * AeonRuntime — Root Build Script
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
  * Licensed under the Apache License, Version 2.0

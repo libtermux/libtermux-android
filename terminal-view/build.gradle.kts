@@ -1,10 +1,14 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.maven.publish)
     // AGP 9.0+ has built-in Kotlin — kotlin.android must NOT be applied here.
 }
 
 android {
-    namespace = "com.libtermux.view"
+    namespace = "com.aeoncorex.aeonruntime.terminal"
     compileSdk = 34
 
     defaultConfig {
@@ -32,4 +36,44 @@ dependencies {
     api(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
+}
+
+// ── Maven Publishing ──────────────────────────────────────────────────────────
+// (Added during the AeonRuntime migration; mirrors :os / :bootstrap-* config.)
+mavenPublishing {
+    configure(
+        AndroidSingleVariantLibrary(
+            variant           = "release",
+            sourcesJar        = true,
+            publishJavadocJar = false,
+        )
+    )
+
+    publishToMavenCentral(SonatypeHost.S01)
+    signAllPublications()
+
+    coordinates(
+        groupId    = project.property("LIB_GROUP_ID").toString(),
+        artifactId = "aeonruntime-terminal",
+        version    = project.property("LIB_VERSION").toString(),
+    )
+
+    pom {
+        name.set("AeonRuntime Terminal View")
+        description.set("Terminal emulator View for rendering AeonRuntime sessions")
+        url.set(project.property("LIB_URL").toString())
+        licenses {
+            license {
+                name.set(project.property("LIB_LICENSE_NAME").toString())
+                url.set("https://www.apache.org/licenses/LICENSE-2.0")
+            }
+        }
+        developers {
+            developer {
+                id.set(project.property("LIB_DEVELOPER_ID").toString())
+                name.set(project.property("LIB_DEVELOPER_NAME").toString())
+            }
+        }
+        scm { url.set(project.property("LIB_URL").toString()) }
+    }
 }

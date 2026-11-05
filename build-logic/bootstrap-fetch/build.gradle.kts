@@ -9,7 +9,7 @@ repositories {
 }
 
 dependencies {
-    // Needed so the precompiled `libtermux.bootstrap-module` script plugin
+    // Needed so the precompiled `aeonruntime.bootstrap-module` script plugin
     // can configure { LibraryExtension }. MUST match the AGP version the
     // rest of the project uses (gradle/libs.versions.toml -> agp) — this
     // included build can't read that catalog itself, so keep these in sync
@@ -26,8 +26,8 @@ dependencies {
 gradlePlugin {
     plugins {
         create("bootstrapFetch") {
-            id = "com.libtermux.bootstrap-fetch"
-            implementationClass = "com.libtermux.buildlogic.BootstrapFetchPlugin"
+            id = "com.aeoncorex.aeonruntime.bootstrap-fetch"
+            implementationClass = "com.aeoncorex.aeonruntime.buildlogic.BootstrapFetchPlugin"
         }
     }
 }

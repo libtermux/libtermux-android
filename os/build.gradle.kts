@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android — OS Module Build Script
+ * AeonRuntime — OS Module Build Script
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
  * Separate Gradle module for Linux distro management:
@@ -25,7 +25,7 @@ plugins {
 }
 
 android {
-    namespace  = "com.libtermux.os"
+    namespace  = "com.aeoncorex.aeonruntime.os"
     compileSdk = 34
 
     defaultConfig {
@@ -114,12 +114,12 @@ mavenPublishing {
 
     coordinates(
         groupId    = project.property("LIB_GROUP_ID").toString(),
-        artifactId = "libtermux-os",
+        artifactId = "aeonruntime-os",
         version    = project.property("LIB_VERSION").toString(),
     )
 
     pom {
-        name.set("LibTermux OS Module")
+        name.set("AeonRuntime OS Module")
         description.set("Linux distro management with proot/chroot and VNC desktop for Android")
         url.set(project.property("LIB_URL").toString())
         licenses {

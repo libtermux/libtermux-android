@@ -1,9 +1,9 @@
 /**
- * LibTermux-Android — bootstrap-arm
+ * AeonRuntime — bootstrap-arm
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  *
  * Ships the official Termux bootstrap zip for "arm" as an Android asset
- * (libtermux/bootstrap-arm.zip), Termux-style: :core extracts it into the
+ * (aeonruntime/bootstrap-arm.zip), Termux-style: :core extracts it into the
  * prefix on first run, no network needed on the device. See
  * build-logic/bootstrap-fetch BootstrapFetchPlugin.
  */
@@ -11,13 +11,13 @@ import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import com.vanniktech.maven.publish.SonatypeHost
 
 plugins {
-    id("libtermux.bootstrap-module")
-    id("com.libtermux.bootstrap-fetch")
+    id("aeonruntime.bootstrap-module")
+    id("com.aeoncorex.aeonruntime.bootstrap-fetch")
     alias(libs.plugins.maven.publish)
 }
 
 bootstrapFetch {
-    termuxArch.set("arm")
+    bootstrapArch.set("arm")
     bootstrapTag.set("bootstrap-2026.05.24-r1+apt.android-7")
 }
 
@@ -34,13 +34,13 @@ mavenPublishing {
 
     coordinates(
         groupId    = project.property("LIB_GROUP_ID").toString(),
-        artifactId = "libtermux-android-bootstrap-arm",
+        artifactId = "aeonruntime-bootstrap-arm",
         version    = project.property("LIB_VERSION").toString(),
     )
 
     pom {
-        name.set("LibTermux Bootstrap (armeabi-v7a)")
-        description.set("Termux bootstrap binaries for armeabi-v7a, packaged for install-time-executable use with libtermux-android")
+        name.set("AeonRuntime Bootstrap (armeabi-v7a)")
+        description.set("Termux bootstrap binaries for armeabi-v7a, packaged for use with AeonRuntime")
         url.set(project.property("LIB_URL").toString())
         licenses {
             license {

@@ -1,5 +1,7 @@
 name: Release
 
+# Triggered only by pushing a tag like v1.0.0. Nothing is published unless such a tag is pushed
+# by a maintainer AND the Maven Central secrets are configured.
 on:
   push:
     tags:
@@ -23,36 +25,73 @@ jobs:
           cache: gradle
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      - name: Grant execute permission
-        run: chmod +x gradlew
-
-      - name: Run tests
-        run: ./gradlew :core:testReleaseUnitTest
-
-      - name: Build release AAR
-        run: ./gradlew :core:assembleRelease
-
-      - name: Generate Dokka docs
-        run: ./gradlew :core:dokkaHtml
+      - run: chmod +x gradlew
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag must match LIB_VERSION in gradle.properties
+        run: |
+          set -euo pipefail
+          declared=$(grep '^LIB_VERSION=' gradle.properties | cut -d= -f2)
+          if [ "$declared" != "${{ steps.version.outputs.VERSION }}" ]; then
+            echo "::error::tag v${{ steps.version.outputs.VERSION }} does not match LIB_VERSION=$declared"
+            exit 1
+          fi
+
+      - name: Source checks
+        run: |
+          python3 scripts/verify_repo.py
+          python3 scripts/verify_jni.py
+
+      - name: Run tests
+        run: ./gradlew :core:testReleaseUnitTest :os:testReleaseUnitTest :shizuku:testReleaseUnitTest --stacktrace
+
+      - name: Build release AARs
+        run: ./gradlew :core:assembleRelease :os:assembleRelease :terminal-view:assembleRelease :shizuku:assembleRelease --stacktrace
+
+      - name: Verify release artifacts (AAR contents, JNI symbols for all ABIs)
+        run: |
+          set -euo pipefail
+          for m in core os terminal-view shizuku; do
+            test -f "$m/build/outputs/aar/$m-release.aar" || { echo "::error::missing $m release AAR"; exit 1; }
+          done
+          rm -rf /tmp/core-aar && mkdir /tmp/core-aar
+          unzip -q core/build/outputs/aar/core-release.aar -d /tmp/core-aar
+          for abi in arm64-v8a x86_64 armeabi-v7a x86; do
+            test -f "/tmp/core-aar/jni/$abi/libaeonruntime_jni.so" || { echo "::error::core AAR lacks $abi native lib"; exit 1; }
+          done
+          python3 scripts/verify_jni.py --so /tmp/core-aar/jni/*/libaeonruntime_jni.so
+
+      - name: Generate Dokka docs
+        run: ./gradlew :core:dokkaHtml --stacktrace
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "LibTermux Android ${{ steps.version.outputs.VERSION }}"
+          name: "AeonRuntime ${{ steps.version.outputs.VERSION }}"
           body_path: CHANGELOG.md
           files: |
             core/build/outputs/aar/core-release.aar
+            os/build/outputs/aar/os-release.aar
+            terminal-view/build/outputs/aar/terminal-view-release.aar
+            shizuku/build/outputs/aar/shizuku-release.aar
           draft: false
           prerelease: false
 
+      # NOTE: the publish task name below was carried over unchanged from the pre-migration
+      # workflow and has NOT been verified against the pinned publishing plugin version.
+      # Verify with `./gradlew :core:tasks --group publishing` before the first real release.
       - name: Publish to Maven Central
-        run: ./gradlew :core:publishReleasePublicationToSonatypeRepository
+        run: |
+          ./gradlew \
+            :core:publishReleasePublicationToSonatypeRepository \
+            :os:publishReleasePublicationToSonatypeRepository \
+            :terminal-view:publishReleasePublicationToSonatypeRepository \
+            :shizuku:publishReleasePublicationToSonatypeRepository
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

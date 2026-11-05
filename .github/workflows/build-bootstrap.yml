@@ -9,7 +9,7 @@ on:
     inputs:
       package_name:
         description: "Android applicationId the bootstrap is built for"
-        default: "com.libtermux.sample"
+        default: "com.aeoncorex.aeonruntime.sample"
       architectures:
         description: 'JSON list, e.g. ["aarch64"] or ["aarch64","arm","i686","x86_64"]'
         default: '["aarch64"]'

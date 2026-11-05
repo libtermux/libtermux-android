@@ -1,5 +1,5 @@
 /**
- * LibTermux-Android
+ * AeonRuntime
  * Copyright (c) 2026 AeonCoreX-Lab / cybernahid-dev.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  * Author: cybernahid-dev (Systems Developer)
- * Project: https://github.com/AeonCoreX-Lab/libtermux-android
+ * Project: https://github.com/AeonCoreX-Lab/AeonRuntime
  */
 #include <jni.h>
 #include <android/log.h>
@@ -23,7 +23,7 @@
 #include <string>
 #include <cstring>
 
-#define TAG  "LibTermux-PTY"
+#define TAG  "AeonRuntime-PTY"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
@@ -34,7 +34,7 @@ extern "C" {
  * Returns int[2]: { masterFd, slaveFd }
  */
 JNIEXPORT jintArray JNICALL
-Java_com_libtermux_utils_NativeUtils_openPty(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_openPty(
     JNIEnv* env,
     jclass  /* clazz */
 ) {
@@ -85,7 +85,7 @@ Java_com_libtermux_utils_NativeUtils_openPty(
  * Resize PTY window.
  */
 JNIEXPORT jint JNICALL
-Java_com_libtermux_utils_NativeUtils_resizePty(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_resizePty(
     JNIEnv* /* env */,
     jclass  /* clazz */,
     jint    masterFd,
@@ -106,7 +106,7 @@ Java_com_libtermux_utils_NativeUtils_resizePty(
  * Close a PTY file descriptor.
  */
 JNIEXPORT void JNICALL
-Java_com_libtermux_utils_NativeUtils_closePty(
+Java_com_aeoncorex_aeonruntime_utils_NativeUtils_closePty(
     JNIEnv* /* env */,
     jclass  /* clazz */,
     jint    fd
