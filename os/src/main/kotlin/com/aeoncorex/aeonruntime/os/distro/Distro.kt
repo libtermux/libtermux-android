@@ -116,10 +116,16 @@ sealed class Distro(
     )
 
     companion object {
-        /** All built-in distros */
-        val all: List<Distro> = listOf(
-            Kali, Ubuntu2404, Ubuntu2204, Debian12, Alpine, Fedora40,
-        )
+        /**
+         * All built-in distros.
+         *
+         * Lazy on purpose: the built-ins are subclasses of [Distro]. If this list were built eagerly
+         * in the companion, touching e.g. `Distro.Kali` first would initialise `Distro` while `Kali`
+         * is still being constructed, and the list would permanently contain a `null` for it.
+         */
+        val all: List<Distro> by lazy {
+            listOf(Kali, Ubuntu2404, Ubuntu2204, Debian12, Alpine, Fedora40)
+        }
 
         /** Find a built-in distro by id */
         fun fromId(id: String): Distro? = all.firstOrNull { it.id == id }

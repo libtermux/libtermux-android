@@ -12,7 +12,7 @@ Nothing was published and nothing was pushed to GitHub by the migration itself.
 
 **Update after the first CI run.** Running the real build on GitHub Actions confirmed that `:core` compiles and
 exposed more baseline compile errors in `:os` and `:shizuku`, all present before the rename. They were
-fixed in a separate commit (KNOWN_ISSUES A3–A8). The "Not run" rows below describe the state at hand-over,
+fixed in a separate commit (KNOWN_ISSUES A3–A9). The "Not run" rows below describe the state at hand-over,
 not the state after CI.
 
 ## 1. Method

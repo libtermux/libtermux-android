@@ -55,8 +55,8 @@ pre-release development version inherited from the project's former name; nothin
 
 - Further compile errors in `:os` and `:shizuku` found by the first CI run (missing `RuntimeDsl` import,
   undefined DataStore key helpers, `Size`/`IntSize` mismatch, `isActive` misuse, wrong Shizuku 13.1.5 API
-  calls) and the missing JUnit test dependency of `:shizuku`. Details in
-  [`docs/migration/KNOWN_ISSUES.md`](docs/migration/KNOWN_ISSUES.md) (A3–A8).
+  calls) the missing JUnit test dependency of `:shizuku`, and a class-initialisation bug where `Distro.all` could
+  contain `null` (now lazy). Details in [`docs/migration/KNOWN_ISSUES.md`](docs/migration/KNOWN_ISSUES.md) (A3–A9).
 - `ShizukuRuntimeBridge.runElevated` now starts the Shizuku process via reflection on `Shizuku.newProcess`
   (unsupported workaround; see KNOWN_ISSUES B15).
 
