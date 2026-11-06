@@ -11,8 +11,8 @@ Migration of the former `libtermux-android` repository to **AeonRuntime** (`Aeon
 Nothing was published and nothing was pushed to GitHub by the migration itself.
 
 **Update after the first CI run.** Running the real build on GitHub Actions confirmed that `:core` compiles and
-exposed five more baseline compile errors in `:os` and `:shizuku`, all present before the rename. They were
-fixed in a separate commit (KNOWN_ISSUES A3–A7). The "Not run" rows below describe the state at hand-over,
+exposed more baseline compile errors in `:os` and `:shizuku`, all present before the rename. They were
+fixed in a separate commit (KNOWN_ISSUES A3–A8). The "Not run" rows below describe the state at hand-over,
 not the state after CI.
 
 ## 1. Method

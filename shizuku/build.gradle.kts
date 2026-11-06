@@ -34,6 +34,8 @@ dependencies {
     implementation(libs.shizuku.provider)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.junit)
 }
 
 // ── Maven Publishing ──────────────────────────────────────────────────────────

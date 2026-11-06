@@ -28,8 +28,9 @@ pre-migration code, so not caused by the rename). They are fixed in a second sep
 | A5 | `DistroDisplay.kt`: `Size` vs `IntSize` | `drawImage(dstSize = …)` takes `IntSize` | `IntSize((w / scale).toInt(), (h / scale).toInt())` |
 | A6 | `VncClient.kt`: `isActive` receiver mismatch | `isActive` used in a plain `suspend fun` | `currentCoroutineContext().isActive` |
 | A7 | `ShizukuRuntimeBridge.kt`: unresolved `add/removeOnRequestPermissionResultListener` and `Shizuku.exec` | wrong method names for Shizuku API 13.1.5; `Shizuku.exec` does not exist | renamed to `add/removeRequestPermissionResultListener`; replaced `exec` with a reflective call to `Shizuku.newProcess` (see B15) |
+| A8 | `ElevatedResultTest.kt`: unresolved `junit` / `Test` / `assert*` (second CI run) | `:shizuku` has a unit test but declared no test dependency (also in baseline) | `testImplementation(libs.junit)` in `shizuku/build.gradle.kts` |
 
-A3–A7 are verified only by the compiler errors they address; they were not compiled after the fix. More
+A3–A8 are verified only by the compiler errors they address; they were not compiled after the fix. More
 errors may appear in code the compiler had not reached yet (remaining `:os` and `:shizuku` sources, their
 tests, `:terminal-view`, `:sample`).
 
