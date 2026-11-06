@@ -30,8 +30,9 @@ pre-migration code, so not caused by the rename). They are fixed in a second sep
 | A7 | `ShizukuRuntimeBridge.kt`: unresolved `add/removeOnRequestPermissionResultListener` and `Shizuku.exec` | wrong method names for Shizuku API 13.1.5; `Shizuku.exec` does not exist | renamed to `add/removeRequestPermissionResultListener`; replaced `exec` with a reflective call to `Shizuku.newProcess` (see B15) |
 | A8 | `ElevatedResultTest.kt`: unresolved `junit` / `Test` / `assert*` (second CI run) | `:shizuku` has a unit test but declared no test dependency (also in baseline) | `testImplementation(libs.junit)` in `shizuku/build.gradle.kts` |
 | A9 | `DistroTest`: 5 of 38 `:os` tests fail with `NullPointerException` (third CI run) | **Real runtime bug, also in baseline.** `Distro.all` was built eagerly in the companion. If a built-in such as `Distro.Kali` is touched first, `Distro` is initialised while `Kali` is still under construction, so `all` permanently holds a `null` for it; later `all`/`fromId` calls then crash | `Distro.all` is now `by lazy` |
+| A10 | `:terminal-view:mergeDebugConsumerProguardFiles`: *Supplied consumer proguard configuration does not exist* (fourth CI run) | `consumerProguardFiles("consumer-rules.pro")` pointed at a file that was never created (also in baseline). Same for `os/proguard-rules.pro` and `sample/proguard-rules.pro` (not yet hit by CI) | created the three files (comment-only placeholders, no behaviour change); `verify_repo.py` now checks that every shrinker file referenced from a module build script exists |
 
-A3–A9 are verified only by the compiler errors they address; they were not compiled after the fix. More
+A3–A10 are verified only by the compiler errors they address; they were not compiled after the fix. More
 errors may appear in code the compiler had not reached yet (remaining `:os` and `:shizuku` sources, their
 tests, `:terminal-view`, `:sample`).
 
@@ -48,7 +49,7 @@ import, and cannot know third-party API signatures. It is a complement to a comp
 | B4 | `DefaultBootstrapProvider.isAvailable()` is true whenever `nativeLibraryDir` has any file. Core's own `libaeonruntime_jni.so` is always there, so it likely reports available even without a `bootstrap-<abi>` artifact. | `bootstrap/BootstrapProvider.kt:84` | Confirmed by reading; behaviour inferred | Check for the specific binaries (e.g. `bash`) |
 | B5 | Four bootstrap modules share one namespace (`com.aeoncorex.aeonruntime.bootstrap`, set by the convention plugin), identical to a `:core` package name. AGP normally rejects duplicate namespaces in one app. | `aeonruntime.bootstrap-module.gradle.kts:21` | Suspected | Per-module namespace, e.g. `…bootstrap.arm64` |
 | B6 | `:terminal-view` and `:shizuku` declare `minSdk 24` but depend on `:core` (`minSdk 26`). | `*/build.gradle.kts` | Suspected (manifest-merge error possible) | Align to 26 |
-| B7 | Referenced shrinker files do not exist: `os/proguard-rules.pro`, `terminal-view/consumer-rules.pro`, `sample/proguard-rules.pro` (the sample minifies release builds). | `*/build.gradle.kts` | Confirmed (files absent); effect unverified | Add the files or drop the references |
+| B7 | ~~Referenced shrinker files do not exist~~ **Resolved (see A10).** | | | |
 | B8 | `:core` consumer rule `-keep class com.aeoncorex.aeonruntime.** { *; }` keeps the whole library and defeats shrinking for consumers. | `core/consumer-rules.pro:2` | Confirmed by reading | Narrow to JNI classes and reflective entry points |
 | B9 | The default bootstrap fallback tag (`bootstrap-2026.05.24-r1+apt.android-7`) is duplicated in `RuntimeConfig`, `BootstrapInstaller`, the Gradle plugin and each `bootstrap-*` module. | see left | Confirmed by search | Single source of truth |
 | B10 | `RootUtils` lives in `:core` under package `…aeonruntime.os`, which is also the root package of the `:os` module (split package). | `core/.../os/RootUtils.kt` | Confirmed by structure | Move to a privilege/platform package |

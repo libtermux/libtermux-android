@@ -207,6 +207,22 @@ for gk in files("build.gradle.kts"):
         if (pid.startswith("aeonruntime.") or pid.startswith(BASE_PKG)) and pid not in declared_ids:
             fail(f"[plugin] {rel(gk)}: uses plugin id '{pid}' which build-logic does not declare")
 
+# 6b. shrinker files referenced from module build scripts must exist (AGP fails on a missing
+#     consumerProguardFiles entry; a missing proguardFiles entry fails as soon as minify is on)
+for gk in files("build.gradle.kts"):
+    if "build-logic" in gk.parts:
+        continue
+    text = gk.read_text(encoding="utf-8")
+    for call in re.finditer(r"(consumerProguardFiles|proguardFiles)\(", text):
+        depth, i = 1, call.end()
+        while i < len(text) and depth:            # balanced-parenthesis scan of the call arguments
+            depth += {"(": 1, ")": -1}.get(text[i], 0)
+            i += 1
+        args = text[call.end():i - 1]
+        for name in re.findall(r'"([^"]+\.pro)"', args):
+            if not (gk.parent / name).is_file():
+                fail(f"[shrinker] {rel(gk)}: {call.group(1)} references '{name}' which does not exist")
+
 # ---------------------------------------------------------------------------------------
 # 7. ABI names used by bootstrap modules vs Architecture enum
 # ---------------------------------------------------------------------------------------

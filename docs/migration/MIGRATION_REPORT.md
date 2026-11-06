@@ -12,7 +12,7 @@ Nothing was published and nothing was pushed to GitHub by the migration itself.
 
 **Update after the first CI run.** Running the real build on GitHub Actions confirmed that `:core` compiles and
 exposed more baseline compile errors in `:os` and `:shizuku`, all present before the rename. They were
-fixed in a separate commit (KNOWN_ISSUES A3–A9). The "Not run" rows below describe the state at hand-over,
+fixed in a separate commit (KNOWN_ISSUES A3–A10). The "Not run" rows below describe the state at hand-over,
 not the state after CI.
 
 ## 1. Method
@@ -114,7 +114,7 @@ Full old→new tables: [`RENAME_MAP.md`](RENAME_MAP.md). Complete file list: [`F
 
 See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md), sections B and D. Highest impact: `bash()` shebang (B1), unconsumed
 config options (B2), `SessionManager` not exposed (B3), duplicate bootstrap namespaces (B5), `minSdk`
-mismatch (B6), missing shrinker files (B7), over-broad keep rule (B8).
+mismatch (B6), over-broad keep rule (B8).
 
 ## 6. Recommended next phase
 

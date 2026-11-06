@@ -56,7 +56,8 @@ pre-release development version inherited from the project's former name; nothin
 - Further compile errors in `:os` and `:shizuku` found by the first CI run (missing `RuntimeDsl` import,
   undefined DataStore key helpers, `Size`/`IntSize` mismatch, `isActive` misuse, wrong Shizuku 13.1.5 API
   calls) the missing JUnit test dependency of `:shizuku`, and a class-initialisation bug where `Distro.all` could
-  contain `null` (now lazy). Details in [`docs/migration/KNOWN_ISSUES.md`](docs/migration/KNOWN_ISSUES.md) (A3–A9).
+  contain `null` (now lazy), and three missing ProGuard/R8 files (`terminal-view/consumer-rules.pro`,
+  `os/proguard-rules.pro`, `sample/proguard-rules.pro`). Details in [`docs/migration/KNOWN_ISSUES.md`](docs/migration/KNOWN_ISSUES.md) (A3–A10).
 - `ShizukuRuntimeBridge.runElevated` now starts the Shizuku process via reflection on `Shizuku.newProcess`
   (unsupported workaround; see KNOWN_ISSUES B15).
 
